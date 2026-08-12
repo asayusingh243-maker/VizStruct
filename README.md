@@ -297,7 +297,7 @@ VizStruct/
 
 | Team Member        | Role                    |
 | ------------------ | ----------------------- |
-| **Ayushi Singh**   | Developer / Team Member |
+| **Ayushi Singh**   | Developer / Team leader |
 | **Harshita Yadav** | Developer / Team Member |
 | **Kartik Nigam**   | Developer / Team Member |
 | **Aaman Ahamad**   | Developer / Team Member |
