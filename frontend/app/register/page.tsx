@@ -12,17 +12,15 @@ export default function RegisterPage() {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState("");
 
-  function handleRegister(event: FormEvent<HTMLFormElement>) {
+  async function handleRegister(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    event.stopPropagation();
-
     setError("");
 
     if (
       !fullName.trim() ||
       !email.trim() ||
-      !password.trim() ||
-      !confirmPassword.trim()
+      !password ||
+      !confirmPassword
     ) {
       setError("Please complete every field.");
       return;
@@ -43,15 +41,39 @@ export default function RegisterPage() {
       return;
     }
 
-    setError(
-      "The registration service will be connected when the backend API is ready."
-    );
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/register`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            fullName,
+            email,
+            password,
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.message || "Something went wrong.");
+        return;
+      }
+
+      localStorage.setItem("token", data.token);
+      window.location.href = "/onboarding";
+    } catch {
+      setError("Could not reach the server. Is the backend running?");
+    }
   }
 
   return (
     <main className="min-h-screen bg-[#F8F7FC] text-[#17172B]">
       <div className="grid min-h-screen lg:grid-cols-[0.9fr_1.1fr]">
-
         {/* LEFT SIDE */}
         <section className="relative hidden overflow-hidden bg-[#292865] px-12 py-10 text-white lg:flex lg:flex-col lg:justify-between">
           <div className="absolute -left-24 top-24 h-72 w-72 rounded-full bg-violet-400/20 blur-[100px]" />
@@ -86,8 +108,8 @@ export default function RegisterPage() {
             </h1>
 
             <p className="mt-6 max-w-md text-lg leading-8 text-white/70">
-              Create your learner profile and let VizStruct build a personalized
-              path based on your skills, mistakes, and progress.
+              Create your learner profile and let VizStruct build a
+              personalized path based on your skills, mistakes, and progress.
             </p>
 
             <div className="mt-10 space-y-4 text-sm text-white/75">
@@ -115,7 +137,7 @@ export default function RegisterPage() {
         {/* RIGHT SIDE */}
         <section className="flex items-center justify-center px-6 py-12 sm:px-10">
           <div className="w-full max-w-md">
-
+            {/* Mobile logo */}
             <div className="mb-8 lg:hidden">
               <Link href="/" className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#ECE9FF] font-mono text-xs font-bold text-[#6C5CE7]">
@@ -128,6 +150,7 @@ export default function RegisterPage() {
               </Link>
             </div>
 
+            {/* Heading */}
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#6C5CE7]">
                 Create your account
@@ -144,13 +167,8 @@ export default function RegisterPage() {
             </div>
 
             {/* FORM */}
-            <form
-              onSubmit={handleRegister}
-              noValidate
-              className="mt-8 space-y-5"
-            >
-
-              {/* FULL NAME */}
+            <form onSubmit={handleRegister} className="mt-8 space-y-5">
+              {/* Full Name */}
               <div>
                 <label
                   htmlFor="fullName"
@@ -164,13 +182,13 @@ export default function RegisterPage() {
                   type="text"
                   value={fullName}
                   onChange={(event) => setFullName(event.target.value)}
-                  placeholder="Enter your name"
+                  placeholder="Your full name"
                   autoComplete="name"
-                  className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 outline-none transition placeholder:text-slate-400 focus:border-[#6C5CE7] focus:ring-4 focus:ring-violet-100"
+                  className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 outline-none focus:border-[#6C5CE7] focus:ring-2 focus:ring-[#6C5CE7]/20"
                 />
               </div>
 
-              {/* EMAIL */}
+              {/* Email */}
               <div>
                 <label
                   htmlFor="email"
@@ -186,11 +204,11 @@ export default function RegisterPage() {
                   onChange={(event) => setEmail(event.target.value)}
                   placeholder="you@example.com"
                   autoComplete="email"
-                  className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 outline-none transition placeholder:text-slate-400 focus:border-[#6C5CE7] focus:ring-4 focus:ring-violet-100"
+                  className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 outline-none focus:border-[#6C5CE7] focus:ring-2 focus:ring-[#6C5CE7]/20"
                 />
               </div>
 
-              {/* PASSWORD */}
+              {/* Password */}
               <div>
                 <label
                   htmlFor="password"
@@ -205,9 +223,9 @@ export default function RegisterPage() {
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
-                    placeholder="Create a password"
+                    placeholder="At least 8 characters"
                     autoComplete="new-password"
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 pr-20 outline-none transition placeholder:text-slate-400 focus:border-[#6C5CE7] focus:ring-4 focus:ring-violet-100"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 pr-16 outline-none focus:border-[#6C5CE7] focus:ring-2 focus:ring-[#6C5CE7]/20"
                   />
 
                   <button
@@ -218,13 +236,9 @@ export default function RegisterPage() {
                     {showPassword ? "Hide" : "Show"}
                   </button>
                 </div>
-
-                <p className="mt-2 text-xs text-slate-400">
-                  Use at least 8 characters.
-                </p>
               </div>
 
-              {/* CONFIRM PASSWORD */}
+              {/* Confirm password */}
               <div>
                 <label
                   htmlFor="confirmPassword"
@@ -235,77 +249,61 @@ export default function RegisterPage() {
 
                 <input
                   id="confirmPassword"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   value={confirmPassword}
-                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  onChange={(event) =>
+                    setConfirmPassword(event.target.value)
+                  }
                   placeholder="Re-enter your password"
                   autoComplete="new-password"
-                  className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 outline-none transition placeholder:text-slate-400 focus:border-[#6C5CE7] focus:ring-4 focus:ring-violet-100"
+                  className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 outline-none focus:border-[#6C5CE7] focus:ring-2 focus:ring-[#6C5CE7]/20"
                 />
               </div>
 
-              {/* TERMS */}
-              <label className="flex items-start gap-3 text-sm leading-6 text-slate-500">
+              {/* Terms checkbox */}
+              <label className="flex items-start gap-3 text-sm text-slate-600">
                 <input
                   type="checkbox"
                   checked={acceptedTerms}
-                  onChange={(event) => setAcceptedTerms(event.target.checked)}
+                  onChange={(event) =>
+                    setAcceptedTerms(event.target.checked)
+                  }
                   className="mt-1 h-4 w-4 rounded border-slate-300"
                 />
 
                 <span>
-                  I agree to use VizStruct for educational purposes and
-                  understand that my learning data will be used to personalize
-                  recommendations.
+                  I agree to the educational-use terms and privacy policy.
                 </span>
               </label>
 
-              {/* ERROR MESSAGE */}
+              {/* Error message */}
               {error && (
                 <p
                   role="alert"
-                  className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+                  className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600"
                 >
                   {error}
                 </p>
               )}
 
-              {/* SUBMIT */}
+              {/* Submit */}
               <button
                 type="submit"
-                className="w-full rounded-xl bg-[#6C5CE7] px-6 py-3.5 font-semibold text-white shadow-[0_10px_30px_rgba(108,92,231,0.18)] transition hover:-translate-y-0.5 hover:bg-[#5B4BCF]"
+                className="w-full rounded-xl bg-[#6C5CE7] px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-[#5b4dd1]"
               >
-                Create Account →
+                Create account
               </button>
             </form>
-
-            <div className="mt-6 flex items-center gap-4">
-              <div className="h-px flex-1 bg-slate-200" />
-
-              <span className="text-xs text-slate-400">
-                Already registered?
-              </span>
-
-              <div className="h-px flex-1 bg-slate-200" />
-            </div>
 
             <p className="mt-6 text-center text-sm text-slate-500">
               Already have an account?{" "}
               <Link
                 href="/login"
-                className="font-semibold text-[#6C5CE7] hover:underline"
+                className="font-semibold text-[#6C5CE7]"
               >
                 Log in
               </Link>
             </p>
-
-            <Link
-              href="/"
-              className="mt-8 block text-center text-xs font-medium text-slate-400 hover:text-[#6C5CE7]"
-            >
-              ← Back to homepage
-            </Link>
-
           </div>
         </section>
       </div>

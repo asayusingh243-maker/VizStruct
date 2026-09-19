@@ -9,8 +9,9 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [keepLoggedIn, setKeepLoggedIn] = useState(true);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function handleLogin(event: FormEvent<HTMLFormElement>) {
+  async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
 
@@ -19,21 +20,57 @@ export default function LoginPage() {
       return;
     }
 
-    // The backend teammate will provide the login API endpoint and JWT response.
-    setError("The login service will be connected when the backend API is ready.");
+    try {
+      setLoading(true);
+
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: email.trim(),
+            password,
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.message || "Invalid email or password.");
+        return;
+      }
+
+      if (!data.token) {
+        setError("Login succeeded, but no authentication token was received.");
+        return;
+      }
+
+      if (keepLoggedIn) {
+        localStorage.setItem("token", data.token);
+      } else {
+        sessionStorage.setItem("token", data.token);
+      }
+
+      window.location.href = "/onboarding";
+    } catch {
+      setError("Could not reach the server. Is the backend running?");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
     <main className="min-h-screen bg-[#F8F7FC] text-[#17172B]">
       <div className="grid min-h-screen lg:grid-cols-[0.9fr_1.1fr]">
-
         {/* LEFT SIDE */}
         <section className="relative hidden overflow-hidden bg-[#292865] px-12 py-10 text-white lg:flex lg:flex-col lg:justify-between">
-          {/* Background glows */}
           <div className="absolute -left-24 top-24 h-72 w-72 rounded-full bg-violet-400/20 blur-[100px]" />
           <div className="absolute -right-20 bottom-20 h-72 w-72 rounded-full bg-cyan-300/10 blur-[100px]" />
 
-          {/* Logo */}
           <Link href="/" className="relative z-10 flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 font-mono text-sm font-bold">
               {"</>"}
@@ -50,56 +87,50 @@ export default function LoginPage() {
             </div>
           </Link>
 
-          {/* Main message */}
           <div className="relative z-10 max-w-lg">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#BDBBFF]">
-              Welcome Back
+              Welcome back
             </p>
 
             <h1 className="mt-5 text-5xl font-bold leading-tight">
-              Continue where
+              Continue your journey.
               <span className="block text-[#8EDBD5]">
-                you left off.
+                Keep improving every day.
               </span>
             </h1>
 
             <p className="mt-6 max-w-md text-lg leading-8 text-white/70">
-              Your learning path evolves with every problem you solve.
-              Sign in to continue practicing, visualizing, and improving.
+              Pick up where you left off and continue building your coding
+              skills with personalized learning and feedback.
             </p>
 
-            {/* Mini learning path */}
-            <div className="mt-10 rounded-2xl border border-white/10 bg-white/[0.06] p-5 backdrop-blur">
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/40">
-                Your Journey
-              </p>
-
-              <div className="mt-5 flex flex-wrap items-center gap-3 text-xs font-semibold text-white/75">
-                <span>Learn</span>
-                <span className="text-[#8EDBD5]">→</span>
-
-                <span>Practice</span>
-                <span className="text-[#8EDBD5]">→</span>
-
-                <span>Visualize</span>
-                <span className="text-[#8EDBD5]">→</span>
-
-                <span>Improve</span>
-              </div>
+            <div className="mt-10 space-y-4 text-sm text-white/75">
+              {[
+                "Personalized learning path",
+                "Step-by-step code visualization",
+                "Track your progress",
+                "Adaptive problem recommendations",
+              ].map((item) => (
+                <div key={item} className="flex items-center gap-3">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-xs text-[#8EDBD5]">
+                    ✓
+                  </span>
+                  {item}
+                </div>
+              ))}
             </div>
           </div>
 
           <p className="relative z-10 text-xs text-white/40">
-            Understand the logic. Master the structure.
+            Built for learners who want to understand, not just submit.
           </p>
         </section>
 
         {/* RIGHT SIDE */}
         <section className="flex items-center justify-center px-6 py-12 sm:px-10">
           <div className="w-full max-w-md">
-
             {/* Mobile logo */}
-            <div className="mb-10 lg:hidden">
+            <div className="mb-8 lg:hidden">
               <Link href="/" className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#ECE9FF] font-mono text-xs font-bold text-[#6C5CE7]">
                   {"</>"}
@@ -114,7 +145,7 @@ export default function LoginPage() {
             {/* Heading */}
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#6C5CE7]">
-                Welcome Back
+                Welcome back
               </p>
 
               <h2 className="mt-3 text-4xl font-bold tracking-[-0.03em]">
@@ -122,17 +153,19 @@ export default function LoginPage() {
               </h2>
 
               <p className="mt-3 text-sm leading-6 text-slate-500">
-                Continue your personalized coding journey and pick up from your
-                latest recommendation.
+                Continue your personalized coding journey and pick up from
+                your latest recommendation.
               </p>
             </div>
 
-            {/* Form */}
+            {/* FORM */}
             <form onSubmit={handleLogin} className="mt-9 space-y-5">
-
               {/* Email */}
               <div>
-                <label htmlFor="email" className="text-sm font-semibold text-slate-700">
+                <label
+                  htmlFor="email"
+                  className="text-sm font-semibold text-slate-700"
+                >
                   Email address
                 </label>
 
@@ -143,20 +176,26 @@ export default function LoginPage() {
                   onChange={(event) => setEmail(event.target.value)}
                   placeholder="you@example.com"
                   autoComplete="email"
-                  className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 outline-none transition placeholder:text-slate-400 focus:border-[#6C5CE7] focus:ring-4 focus:ring-violet-100"
+                  className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 outline-none focus:border-[#6C5CE7] focus:ring-2 focus:ring-[#6C5CE7]/20"
                 />
               </div>
 
               {/* Password */}
               <div>
                 <div className="flex items-center justify-between">
-                  <label htmlFor="password" className="text-sm font-semibold text-slate-700">
+                  <label
+                    htmlFor="password"
+                    className="text-sm font-semibold text-slate-700"
+                  >
                     Password
                   </label>
 
                   <button
                     type="button"
-                    className="text-xs font-semibold text-[#6C5CE7] hover:underline"
+                    className="text-sm font-semibold text-[#6C5CE7] hover:text-[#5b4dd1]"
+                    onClick={() =>
+                      setError("Password reset will be available soon.")
+                    }
                   >
                     Forgot password?
                   </button>
@@ -170,7 +209,7 @@ export default function LoginPage() {
                     onChange={(event) => setPassword(event.target.value)}
                     placeholder="Enter your password"
                     autoComplete="current-password"
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 pr-20 outline-none transition placeholder:text-slate-400 focus:border-[#6C5CE7] focus:ring-4 focus:ring-violet-100"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 pr-16 outline-none focus:border-[#6C5CE7] focus:ring-2 focus:ring-[#6C5CE7]/20"
                   />
 
                   <button
@@ -183,60 +222,50 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {/* Remember */}
-              <label className="flex items-center gap-3 text-sm text-slate-500">
+              {/* Keep logged in */}
+              <label className="flex items-center gap-3 text-sm text-slate-600">
                 <input
                   type="checkbox"
                   checked={keepLoggedIn}
-                  onChange={(event) => setKeepLoggedIn(event.target.checked)}
+                  onChange={(event) =>
+                    setKeepLoggedIn(event.target.checked)
+                  }
                   className="h-4 w-4 rounded border-slate-300"
                 />
 
                 Keep me logged in
               </label>
 
+              {/* Error message */}
               {error && (
                 <p
                   role="alert"
-                  className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+                  className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600"
                 >
                   {error}
                 </p>
               )}
 
-              {/* Login */}
+              {/* Submit */}
               <button
                 type="submit"
-                className="w-full rounded-xl bg-[#6C5CE7] px-6 py-3.5 font-semibold text-white shadow-[0_10px_30px_rgba(108,92,231,0.18)] transition hover:-translate-y-0.5 hover:bg-[#5B4BCF]"
+                disabled={loading}
+                className="w-full rounded-xl bg-[#6C5CE7] px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-[#5b4dd1] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Log In →
+                {loading ? "Logging in..." : "Log In →"}
               </button>
             </form>
 
-            {/* Divider */}
-            <div className="mt-8 flex items-center gap-4">
-              <div className="h-px flex-1 bg-slate-200" />
-
-              <span className="text-xs text-slate-400">
-                New to VizStruct?
-              </span>
-
-              <div className="h-px flex-1 bg-slate-200" />
-            </div>
-
             {/* Register */}
+            <p className="mt-6 text-center text-sm text-slate-500">
+              New to VizStruct?
+            </p>
+
             <Link
               href="/register"
-              className="mt-6 block w-full rounded-xl border border-slate-200 bg-white px-6 py-3.5 text-center text-sm font-semibold text-[#17172B] transition hover:border-violet-300 hover:text-[#6C5CE7]"
+              className="mt-4 block w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-center text-sm font-semibold text-[#17172B] transition hover:border-[#6C5CE7] hover:text-[#6C5CE7]"
             >
               Create a VizStruct Account
-            </Link>
-
-            <Link
-              href="/"
-              className="mt-8 block text-center text-xs font-medium text-slate-400 hover:text-[#6C5CE7]"
-            >
-              ← Back to homepage
             </Link>
           </div>
         </section>
