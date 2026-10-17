@@ -17,6 +17,6 @@ router.post("/start", authMiddleware, startAssessment);
 
 router.post("/submit", authMiddleware, submitAssessment);
 
-router.get("/result", authMiddleware, getAssessmentResult);
+router.get("/result/:id", authMiddleware, getAssessmentResult);
 
 module.exports = router;

@@ -1,5 +1,37 @@
 const mongoose = require("mongoose");
 
+const topicProgressSchema = new mongoose.Schema(
+  {
+    topic: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    attempted: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    solved: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    accuracy: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+    },
+  },
+  {
+    _id: false,
+  }
+);
+
 const progressSchema = new mongoose.Schema(
   {
     userId: {
@@ -35,38 +67,15 @@ const progressSchema = new mongoose.Schema(
     },
 
     topicsCompleted: {
-      type: [String],
-      default: [],
+      type: Number,
+      default: 0,
+      min: 0,
     },
 
-    topicProgress: [
-      {
-        topic: {
-          type: String,
-          required: true,
-          trim: true,
-        },
-
-        attempted: {
-          type: Number,
-          default: 0,
-          min: 0,
-        },
-
-        solved: {
-          type: Number,
-          default: 0,
-          min: 0,
-        },
-
-        accuracy: {
-          type: Number,
-          default: 0,
-          min: 0,
-          max: 100,
-        },
-      },
-    ],
+    topicProgress: {
+      type: [topicProgressSchema],
+      default: [],
+    },
 
     totalSubmissions: {
       type: Number,
@@ -84,6 +93,4 @@ const progressSchema = new mongoose.Schema(
   }
 );
 
-const Progress = mongoose.model("Progress", progressSchema);
-
-module.exports = Progress;
+module.exports = mongoose.model("Progress", progressSchema);

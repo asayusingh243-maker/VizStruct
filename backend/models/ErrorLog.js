@@ -11,7 +11,7 @@ const errorLogSchema = new mongoose.Schema(
     submissionId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Submission",
-      required: true,
+      default: null,
     },
 
     problemId: {
@@ -32,7 +32,7 @@ const errorLogSchema = new mongoose.Schema(
         "memory_limit",
         "other",
       ],
-      default: "other",
+      required: true,
     },
 
     errorMessage: {
@@ -43,13 +43,11 @@ const errorLogSchema = new mongoose.Schema(
     misconception: {
       type: String,
       default: "",
-      trim: true,
     },
 
     explanation: {
       type: String,
       default: "",
-      trim: true,
     },
 
     suggestedTopics: {
@@ -78,6 +76,4 @@ const errorLogSchema = new mongoose.Schema(
   }
 );
 
-const ErrorLog = mongoose.model("ErrorLog", errorLogSchema);
-
-module.exports = ErrorLog;
+module.exports = mongoose.model("ErrorLog", errorLogSchema);

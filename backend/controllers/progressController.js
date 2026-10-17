@@ -1,56 +1,60 @@
-const Progress = require("../models/Progress");
+const Problem = require("../models/Problem");
+const ProblemProgress = require("../models/problemProgress");
 const Assessment = require("../models/Assessment");
-const { practiceProblems } = require("../data/seedContent");
 
-async function getProgress(req, res) {
+const getProgress = async (req, res) => {
   try {
-    const userRecords = await Progress.find({ userId: req.user._id })
-      .sort({ updatedAt: -1 })
-      .lean();
+    const userId = req.user._id;
 
-    const latestAssessment = await Assessment.findOne({
-      userId: req.user._id,
-      status: "completed",
+    const progress = await ProblemProgress.find({
+      userId,
     })
-      .sort({ createdAt: -1 })
-      .lean();
+      .populate("problemId", "title topic difficulty")
+      .sort({ lastActivity: -1 });
 
-    const solvedCount = userRecords.filter(
+    const totalProblems = await Problem.countDocuments({
+      isActive: true,
+    });
+
+    const solvedProblems = progress.filter(
       (item) => item.status === "solved"
     ).length;
 
-    const attemptedCount = userRecords.length;
+    const attemptedProblems = progress.length;
 
-    const problems = userRecords.map((record) => ({
-      userId: record.userId.toString(),
-      problemId: record.problemId,
-      status: record.status,
-      attempts: record.attempts,
-      lastCode: record.lastCode,
-      solvedAt: record.solvedAt,
-    }));
+    const totalAttempts = progress.reduce(
+      (total, item) => total + item.attempts,
+      0
+    );
 
-    return res.json({
-      solvedCount,
-      attemptedCount,
-      totalProblems: practiceProblems.length,
-      completionPercent:
-        practiceProblems.length === 0
-          ? 0
-          : Math.round((solvedCount / practiceProblems.length) * 100),
+    const latestAssessment = await Assessment.findOne({
+      userId,
+      status: "completed",
+    }).sort({ completedAt: -1 });
 
-      latestDiagnosticScore: latestAssessment
-        ? latestAssessment.percentage
-        : null,
-
-      problems,
+    res.status(200).json({
+      summary: {
+        totalProblems,
+        attemptedProblems,
+        solvedProblems,
+        totalAttempts,
+        accuracy:
+          attemptedProblems > 0
+            ? (solvedProblems / attemptedProblems) * 100
+            : 0,
+      },
+      assessment: latestAssessment,
+      problems: progress,
     });
   } catch (error) {
-    console.error("getProgress:", error);
-    return res.status(500).json({
-      message: "Unable to load progress.",
+    console.error("Progress error:", error.message);
+
+    res.status(500).json({
+      message: "Unable to fetch progress.",
     });
   }
-}
+};
 
-module.exports = { getProgress };
+module.exports = {
+  getProgress,
+};

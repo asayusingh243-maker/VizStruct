@@ -3,7 +3,7 @@ require("dotenv").config();
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 
-const connectDB = require("./config/db");
+const connectDB = require("./data/db");
 
 const User = require("./models/User");
 const LearnerProfile = require("./models/LearnerProfile");
@@ -15,53 +15,62 @@ const seedDatabase = async () => {
   try {
     await connectDB();
 
-    console.log("Clearing old sample data...");
-
-    await User.deleteMany({});
-    await LearnerProfile.deleteMany({});
-    await DiagnosticQuestion.deleteMany({});
-    await Problem.deleteMany({});
-    await RecoveryExercise.deleteMany({});
-
-    // -------------------------
-    // 1. Create sample user
-    // -------------------------
-
+    console.log("Seeding VizStruct database...");
     const hashedPassword = await bcrypt.hash("Test@12345", 10);
 
-    const user = await User.create({
-      name: "Test Student",
-      email: "student@vizstruct.com",
-      password: hashedPassword,
-      role: "student",
-    });
-
-    console.log("User created");
-
-    // -------------------------
-    // 2. Create learner profile
-    // -------------------------
-
-    await LearnerProfile.create({
-      userId: user._id,
-      skillLevel: "beginner",
-      programmingLanguages: ["JavaScript", "Python"],
-      strengths: ["Variables", "Basic syntax"],
-      weaknesses: ["Loops", "Arrays"],
-      learningPreferences: ["Practice", "Step-by-step explanation"],
-      interests: ["Web Development", "Problem Solving"],
-      goals: ["Improve programming fundamentals"],
-    });
-
-    console.log("Learner profile created");
-
-    // -------------------------
-    // 3. Diagnostic questions
-    // -------------------------
-
-    const questions = await DiagnosticQuestion.insertMany([
+    const user = await User.findOneAndUpdate(
       {
-        question: "Which keyword is used to declare a variable in JavaScript?",
+        email: "student@vizstruct.com",
+      },
+      {
+        $set: {
+          fullName: "Test Student",
+          email: "student@vizstruct.com",
+          password: hashedPassword,
+          level: "Beginner",
+        },
+      },
+      {
+        new: true,
+        upsert: true,
+        runValidators: true,
+        setDefaultsOnInsert: true,
+      }
+    );
+
+    console.log("Sample user created/updated");
+    await LearnerProfile.findOneAndUpdate(
+      {
+        userId: user._id,
+      },
+      {
+        $set: {
+          userId: user._id,
+          skillLevel: "beginner",
+          programmingLanguages: ["JavaScript", "Python"],
+          strengths: ["Variables", "Basic syntax"],
+          weaknesses: ["Loops", "Arrays"],
+          learningPreferences: [
+            "Practice",
+            "Step-by-step explanation",
+          ],
+          interests: ["Web Development", "Problem Solving"],
+          goals: ["Improve programming fundamentals"],
+        },
+      },
+      {
+        new: true,
+        upsert: true,
+        runValidators: true,
+        setDefaultsOnInsert: true,
+      }
+    );
+
+    console.log("Learner profile created/updated");
+    const questions = [
+      {
+        question:
+          "Which keyword is used to declare a variable in JavaScript?",
         topic: "Variables",
         difficulty: "easy",
         language: "JavaScript",
@@ -71,9 +80,9 @@ const seedDatabase = async () => {
           "The var keyword can be used to declare a variable in JavaScript.",
         isActive: true,
       },
-
       {
-        question: "Which loop is commonly used to iterate through an array?",
+        question:
+          "Which loop is commonly used to iterate through an array?",
         topic: "Loops",
         difficulty: "easy",
         language: "JavaScript",
@@ -83,9 +92,9 @@ const seedDatabase = async () => {
           "A for loop is commonly used to iterate through array elements.",
         isActive: true,
       },
-
       {
-        question: "Which data structure stores multiple values in Python?",
+        question:
+          "Which data structure stores multiple values in Python?",
         topic: "Arrays",
         difficulty: "easy",
         language: "Python",
@@ -95,117 +104,151 @@ const seedDatabase = async () => {
           "Python lists are used to store multiple values in an ordered collection.",
         isActive: true,
       },
-    ]);
+    ];
 
-    console.log(`${questions.length} diagnostic questions created`);
-
-    // -------------------------
-    // 4. Create sample problem
-    // -------------------------
-
-    const problem = await Problem.create({
-      title: "Sum of Two Numbers",
-
-      description:
-        "Write a program that takes two numbers and returns their sum.",
-
-      topic: "Variables",
-
-      difficulty: "easy",
-
-      languages: ["JavaScript", "Python"],
-
-      inputFormat:
-        "Two numbers are provided as input.",
-
-      outputFormat:
-        "Print the sum of the two numbers.",
-
-      constraints: [
-        "The numbers are integers.",
-        "The numbers are within a reasonable range.",
-      ],
-
-      testCases: [
+    for (const question of questions) {
+      await DiagnosticQuestion.findOneAndUpdate(
         {
-          input: "2 3",
-          expectedOutput: "5",
-          isHidden: false,
+          question: question.question,
         },
-
         {
-          input: "10 20",
-          expectedOutput: "30",
-          isHidden: true,
+          $set: question,
         },
-      ],
+        {
+          new: true,
+          upsert: true,
+          runValidators: true,
+          setDefaultsOnInsert: true,
+        }
+      );
+    }
 
-      starterCode: {
-        JavaScript:
-          "const input = require('fs').readFileSync(0, 'utf8').trim().split(/\\s+/).map(Number);",
-
-        Python:
-          "a, b = map(int, input().split())",
+    console.log(
+      `${questions.length} diagnostic questions created/updated`
+    );
+    const problem = await Problem.findOneAndUpdate(
+      {
+        title: "Sum of Two Numbers",
       },
+      {
+        $set: {
+          title: "Sum of Two Numbers",
 
-      tags: ["variables", "basic", "arithmetic"],
+          description:
+            "Write a program that takes two numbers and returns their sum.",
 
-      solutionExplanation:
-        "Read two numbers and add them together.",
+          topic: "Variables",
 
-      isActive: true,
-    });
+          difficulty: "easy",
 
-    console.log("Problem created");
+          languages: ["JavaScript", "Python"],
 
-    // -------------------------
-    // 5. Create recovery exercise
-    // -------------------------
+          inputFormat:
+            "Two numbers are provided as input.",
 
-    await RecoveryExercise.create({
-      title: "Practice Basic Variables",
+          outputFormat:
+            "Print the sum of the two numbers.",
 
-      description:
-        "Practice storing values in variables and using them in simple calculations.",
+          constraints: [
+            "The numbers are integers.",
+            "The numbers are within a reasonable range.",
+          ],
 
-      topic: "Variables",
+          testCases: [
+            {
+              input: "2 3",
+              expectedOutput: "5",
+              isHidden: false,
+            },
+            {
+              input: "10 20",
+              expectedOutput: "30",
+              isHidden: true,
+            },
+          ],
 
-      misconception:
-        "Difficulty understanding how values are stored and used in variables.",
+          starterCode: {
+            JavaScript:
+              "const input = require('fs').readFileSync(0, 'utf8').trim().split(/\\s+/).map(Number);",
 
-      difficulty: "easy",
+            Python:
+              "a, b = map(int, input().split())",
+          },
 
-      language: "JavaScript",
+          tags: ["variables", "basic", "arithmetic"],
 
-      instructions: [
-        "Create two variables.",
-        "Store numbers in the variables.",
-        "Add the values together.",
-        "Display the result.",
-      ],
+          solutionExplanation:
+            "Read two numbers and add them together.",
 
-      hints: [
-        "Use let or const to create variables.",
-        "Use the + operator to add the values.",
-      ],
+          isActive: true,
+        },
+      },
+      {
+        new: true,
+        upsert: true,
+        runValidators: true,
+        setDefaultsOnInsert: true,
+      }
+    );
 
-      expectedConcept:
-        "Variables store values that can be used in expressions.",
+    console.log("Problem created/updated");
+    await RecoveryExercise.findOneAndUpdate(
+      {
+        title: "Practice Basic Variables",
+      },
+      {
+        $set: {
+          title: "Practice Basic Variables",
 
-      relatedProblemId: problem._id,
+          description:
+            "Practice storing values in variables and using them in simple calculations.",
 
-      isActive: true,
-    });
+          topic: "Variables",
 
-    console.log("Recovery exercise created");
+          misconception:
+            "Difficulty understanding how values are stored and used in variables.",
+
+          difficulty: "easy",
+
+          language: "JavaScript",
+
+          instructions: [
+            "Create two variables.",
+            "Store numbers in the variables.",
+            "Add the values together.",
+            "Display the result.",
+          ],
+
+          hints: [
+            "Use let or const to create variables.",
+            "Use the + operator to add the values.",
+          ],
+
+          expectedConcept:
+            "Variables store values that can be used in expressions.",
+
+          relatedProblemId: problem._id,
+
+          isActive: true,
+        },
+      },
+      {
+        new: true,
+        upsert: true,
+        runValidators: true,
+        setDefaultsOnInsert: true,
+      }
+    );
+
+    console.log("Recovery exercise created/updated");
 
     console.log("\n=================================");
     console.log("VizStruct database seeded!");
     console.log("=================================");
     console.log(`User ID: ${user._id}`);
     console.log(`Problem ID: ${problem._id}`);
-    console.log(`Email: student@vizstruct.com`);
-    console.log(`Password: Test@12345`);
+    console.log("Email: student@vizstruct.com");
+    console.log("Password: Test@12345");
     console.log("=================================\n");
 
     await mongoose.connection.close();
@@ -214,7 +257,9 @@ const seedDatabase = async () => {
   } catch (error) {
     console.error("Seed error:", error.message);
 
-    await mongoose.connection.close();
+    if (mongoose.connection.readyState !== 0) {
+      await mongoose.connection.close();
+    }
 
     process.exit(1);
   }

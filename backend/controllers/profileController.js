@@ -1,3 +1,5 @@
+
+
 const LearnerProfile = require("../models/LearnerProfile");
 
 const createOrUpdateProfile = async (req, res) => {
@@ -13,9 +15,9 @@ const createOrUpdateProfile = async (req, res) => {
     } = req.body;
 
     const profile = await LearnerProfile.findOneAndUpdate(
-      { userId: req.user.userId },
+      { userId: req.user._id },
       {
-        userId: req.user.userId,
+        userId: req.user._id,
         skillLevel,
         programmingLanguages,
         strengths,
@@ -44,11 +46,10 @@ const createOrUpdateProfile = async (req, res) => {
   }
 };
 
-// Get learner profile
 const getProfile = async (req, res) => {
   try {
     const profile = await LearnerProfile.findOne({
-      userId: req.user.userId,
+      userId: req.user._id,
     });
 
     if (!profile) {

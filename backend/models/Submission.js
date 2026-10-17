@@ -22,7 +22,6 @@ const submissionSchema = new mongoose.Schema(
     language: {
       type: String,
       required: true,
-      trim: true,
     },
 
     status: {
@@ -64,13 +63,11 @@ const submissionSchema = new mongoose.Schema(
     testCasesPassed: {
       type: Number,
       default: 0,
-      min: 0,
     },
 
     totalTestCases: {
       type: Number,
       default: 0,
-      min: 0,
     },
 
     judge0SubmissionId: {
@@ -88,6 +85,4 @@ const submissionSchema = new mongoose.Schema(
   }
 );
 
-const Submission = mongoose.model("Submission", submissionSchema);
-
-module.exports = Submission;
+module.exports = mongoose.model("Submission", submissionSchema);
