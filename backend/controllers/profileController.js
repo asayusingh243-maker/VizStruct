@@ -1,6 +1,5 @@
 const LearnerProfile = require("../models/LearnerProfile");
 
-// Create or update learner profile
 const createOrUpdateProfile = async (req, res) => {
   try {
     const {

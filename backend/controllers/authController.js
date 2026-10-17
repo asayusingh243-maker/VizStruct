@@ -1,151 +1,82 @@
 const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-
+const generateToken = require("../utils/generateToken");
 const User = require("../models/User");
 
-// Register a new user
-const registerUser = async (req, res) => {
+async function registerUser(req, res) {
   try {
-    const { name, email, password } = req.body;
+    const fullName = typeof req.body.fullName === "string" ? req.body.fullName.trim() : "";
+    const email = typeof req.body.email === "string" ? req.body.email.trim().toLowerCase() : "";
+    const password = req.body.password;
 
-    // Check required fields
-    if (!name || !email || !password) {
-      return res.status(400).json({
-        message: "Name, email and password are required",
-      });
+    if (!fullName || !email || typeof password !== "string") {
+      return res.status(400).json({ message: "Full name, email and password are required." });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ message: "Password must be at least 8 characters." });
     }
 
-    // Check password length
-    if (password.length < 6) {
-      return res.status(400).json({
-        message: "Password must be at least 6 characters long",
-      });
-    }
-
-    // Check whether user already exists
-    const existingUser = await User.findOne({
-      email: email.toLowerCase(),
-    });
-
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(409).json({
-        message: "User with this email already exists",
-      });
+      return res.status(409).json({ message: "An account with this email already exists." });
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
+    const user = await User.create({ fullName, email, password: hashedPassword });
+    const token = generateToken(user._id.toString());
 
-    // Create user
-    const user = await User.create({
-      name,
-      email: email.toLowerCase(),
-      password: hashedPassword,
-      role: "student",
-    });
-
-    // Create JWT
-    const token = jwt.sign(
-      {
-        userId: user._id,
-        role: user.role,
-      },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: "7d",
-      }
-    );
-
-    res.status(201).json({
-      message: "User registered successfully",
-
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
-
+    return res.status(201).json({
+      message: "Account created successfully.",
       token,
+      user: {
+        id: user._id.toString(),
+        fullName: user.fullName,
+        email: user.email,
+        level: user.level,
+      },
     });
   } catch (error) {
-    console.error("Registration error:", error.message);
-
-    res.status(500).json({
-      message: "Server error during registration",
-    });
+    if (error && error.code === 11000) {
+      return res.status(409).json({ message: "An account with this email already exists." });
+    }
+    console.error("registerUser:", error);
+    return res.status(500).json({ message: "Unable to create the account right now." });
   }
-};
+}
 
-// Login an existing user
-const loginUser = async (req, res) => {
+async function loginUser(req, res) {
   try {
-    const { email, password } = req.body;
+    const email = typeof req.body.email === "string" ? req.body.email.trim().toLowerCase() : "";
+    const password = req.body.password;
 
-    // Check required fields
-    if (!email || !password) {
-      return res.status(400).json({
-        message: "Email and password are required",
-      });
+    if (!email || typeof password !== "string" || !password) {
+      return res.status(400).json({ message: "Email and password are required." });
     }
 
-    // Find user
-    const user = await User.findOne({
-      email: email.toLowerCase(),
-    });
-
-    if (!user) {
-      return res.status(401).json({
-        message: "Invalid email or password",
-      });
+    const user = await User.findOne({ email }).select("+password");
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      return res.status(401).json({ message: "Invalid email or password." });
     }
 
-    // Compare password with stored hash
-    const passwordMatch = await bcrypt.compare(
-      password,
-      user.password
-    );
-
-    if (!passwordMatch) {
-      return res.status(401).json({
-        message: "Invalid email or password",
-      });
-    }
-
-    // Create JWT
-    const token = jwt.sign(
-      {
-        userId: user._id,
-        role: user.role,
-      },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: "7d",
-      }
-    );
-
-    res.status(200).json({
-      message: "Login successful",
-
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
-
+    const token = generateToken(user._id.toString());
+    return res.json({
+      message: "Logged in successfully.",
       token,
+      user: {
+        id: user._id.toString(),
+        fullName: user.fullName,
+        email: user.email,
+        level: user.level,
+      },
     });
   } catch (error) {
-    console.error("Login error:", error.message);
-
-    res.status(500).json({
-      message: "Server error during login",
-    });
+    console.error("loginUser:", error);
+    return res.status(500).json({ message: "Unable to log in right now." });
   }
-};
+}
 
-module.exports = {
-  registerUser,
-  loginUser,
-};
+function getCurrentUser(req, res) {
+  const { _id, fullName, email, level, createdAt } = req.user;
+  return res.json({ id: _id.toString(), fullName, email, level, createdAt });
+}
+
+module.exports = { registerUser, loginUser, getCurrentUser };
