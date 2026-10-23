@@ -63,7 +63,7 @@ export default function PracticePage() {
   const [hasRun, setHasRun] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  const [esults, setResults] = useState<TestResult[]>([]);
+  const [results, setResults] = useState<TestResult[]>([]);
 
   const [activeTab, setActiveTab] = useState<
     "testcases" | "output"
@@ -171,7 +171,7 @@ const problem = problems.find(
     item.title?.toLowerCase().includes("largest")
 );
 
-const problemId = problem?._id || problem?.id;
+const problemId = problem?._id;
 
 if (!problemId) {
   throw new Error(
