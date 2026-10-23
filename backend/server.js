@@ -3,24 +3,41 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
-const connectDB = require("./data/db");
+
+const connectDB = require("./config/db");
 
 const authRoutes = require("./routes/authRoutes");
-const diagnosticRoutes = require("./routes/assessmentRoutes");
+const diagnosticRoutes = require("./routes/diagnosticRoutes");
 const practiceRoutes = require("./routes/practiceRoutes");
-const roadmapRoutes = require("./routes/roadmapRoutes");
-const progressRoutes = require("./routes/progressRoutes");
 const profileRoutes = require("./routes/profileRoutes");
+const progressRoutes = require("./routes/progressRoutes");
+const roadmapRoutes = require("./routes/roadmapRoutes");
 
 const app = express();
+const PORT = process.env.PORT || 5000;
 
-app.use(cors({ origin: process.env.CLIENT_URL || "http://localhost:3000" }));
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+  })
+);
+
 app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true }));
 
-app.get("/", (req, res) => res.json({ message: "VizStruct backend is running." }));
+app.get("/", (req, res) => {
+  res.json({
+    success: true,
+    message: "VizStruct backend is running",
+    database: "MongoDB Atlas",
+  });
+});
+
 app.get("/health", (req, res) => {
   const connected = mongoose.connection.readyState === 1;
-  return res.status(connected ? 200 : 503).json({
+
+  res.status(connected ? 200 : 503).json({
     status: connected ? "ok" : "database_disconnected",
   });
 });
@@ -28,28 +45,33 @@ app.get("/health", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/diagnostic", diagnosticRoutes);
 app.use("/api/practice", practiceRoutes);
-app.use("/api/roadmap", roadmapRoutes);
-app.use("/api/progress", progressRoutes);
 app.use("/api/profile", profileRoutes);
+app.use("/api/progress", progressRoutes);
+app.use("/api/roadmap", roadmapRoutes);
 
-app.use((req, res) => res.status(404).json({ message: "Route not found." }));
-app.use((err, req, res, next) => {
-  console.error(err);
-  return res.status(500).json({ message: "Something went wrong on the server." });
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: "Route not found",
+  });
 });
 
-const PORT = process.env.PORT || 5000;
+app.use((err, req, res, next) => {
+  console.error("Server error:", err);
 
-if (!process.env.JWT_SECRET) {
-  console.error("JWT_SECRET is missing. Set it in backend/.env before starting the server.");
-  process.exit(1);
-}
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || "Internal server error",
+  });
+});
 
 connectDB()
   .then(() => {
-    app.listen(PORT, () => console.log(`VizStruct backend listening on http://localhost:${PORT}`));
+    app.listen(PORT, () => {
+      console.log(`VizStruct backend running on http://localhost:${PORT}`);
+    });
   })
   .catch((error) => {
-    console.error("Database connection failed:", error.message);
+    console.error("Failed to start server:", error.message);
     process.exit(1);
   });

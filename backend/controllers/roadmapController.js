@@ -1,61 +1,59 @@
-const Assessment = require("../models/Assessment");
+const LearningPath = require("../models/LearningPath");
+const LearnerProfile = require("../models/LearnerProfile");
 
-const learningPath = [
-  {
-    step: 1,
-    concept: "Variables",
-    description: "Learn how variables store and update data.",
-  },
-  {
-    step: 2,
-    concept: "Conditions",
-    description: "Learn how if / elif / else control the flow of a program.",
-  },
-  {
-    step: 3,
-    concept: "Loops",
-    description: "Learn how for and while loops repeat actions.",
-  },
-  {
-    step: 4,
-    concept: "Arrays",
-    description: "Learn how to store and access lists of values.",
-  },
-  {
-    step: 5,
-    concept: "Functions",
-    description: "Learn how to group reusable logic into functions.",
-  },
+const DEFAULT_TOPICS = [
+  { topic: "Programming Fundamentals", difficulty: "easy" },
+  { topic: "Arrays", difficulty: "easy" },
+  { topic: "Strings", difficulty: "easy" },
+  { topic: "Hashing", difficulty: "medium" },
+  { topic: "Recursion", difficulty: "medium" },
+  { topic: "Trees", difficulty: "medium" },
+  { topic: "Graphs", difficulty: "hard" },
+  { topic: "Dynamic Programming", difficulty: "hard" },
 ];
 
-async function getRoadmap(req, res) {
+const getRoadmap = async (req, res) => {
   try {
-    const latestAssessment = await Assessment.findOne({
-      userId: req.user._id,
-      status: "completed",
-    })
-      .sort({ createdAt: -1 })
-      .lean();
+    let path = await LearningPath.findOne({ userId: req.user._id });
 
-    const weakConcepts = latestAssessment
-      ? latestAssessment.identifiedWeaknesses
-      : [];
+    if (!path) {
+      const profile = await LearnerProfile.findOne({
+        userId: req.user._id,
+      }).lean();
 
-    const roadmap = learningPath.map((item) => ({
-      ...item,
-      recommended: weakConcepts.includes(item.concept),
-    }));
+      const weakTopics = profile?.weaknesses || [];
 
-    return res.json({
-      roadmap,
-      weakConcepts,
+      const topics = DEFAULT_TOPICS.map((item, index) => ({
+        ...item,
+        order: index + 1,
+        status: weakTopics.includes(item.topic)
+          ? "in_progress"
+          : "not_started",
+      }));
+
+      path = await LearningPath.create({
+        userId: req.user._id,
+        topics,
+        currentTopic: topics[0]?.topic || "",
+        completedTopics: [],
+        generatedBy: "system",
+        generatedAt: new Date(),
+      });
+    }
+
+    res.json({
+      success: true,
+      roadmap: path,
     });
   } catch (error) {
-    console.error("getRoadmap:", error);
-    return res.status(500).json({
-      message: "Unable to load roadmap.",
+    console.error("Get roadmap error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to load roadmap",
     });
   }
-}
+};
 
-module.exports = { getRoadmap };
+module.exports = {
+  getRoadmap,
+};

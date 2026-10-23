@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -30,9 +31,7 @@ const testCases = [
 
 const hints = [
   "Think about keeping track of the largest value you have seen so far.",
-
   "Start by assuming the first element is the largest. Then compare the remaining elements with it.",
-
   `Pseudocode:
 1. Store the first array element as current_largest
 2. Visit every element
@@ -47,6 +46,11 @@ type TestResult = {
   status: "pending" | "passed" | "failed";
 };
 
+type PracticeProblem = {
+  _id: string;
+  title?: string;
+};
+
 export default function PracticePage() {
   const router = useRouter();
 
@@ -59,7 +63,7 @@ export default function PracticePage() {
   const [hasRun, setHasRun] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  const [results, setResults] = useState<TestResult[]>([]);
+  const [esults, setResults] = useState<TestResult[]>([]);
 
   const [activeTab, setActiveTab] = useState<
     "testcases" | "output"
@@ -95,19 +99,17 @@ Real Python execution will be connected through Judge0 during backend integratio
 For now, you can continue to the execution visualizer to inspect the learning flow.`);
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     setHasRun(true);
     setSubmitted(true);
     setActiveTab("testcases");
 
     if (!code.trim() || code.includes("pass")) {
-      const incompleteResults: TestResult[] = testCases.map(
-        (test) => ({
-          ...test,
-          output: "Not executed",
-          status: "failed",
-        })
-      );
+      const incompleteResults: TestResult[] = testCases.map((test) => ({
+        ...test,
+        output: "Not executed",
+        status: "failed",
+      }));
 
       setResults(incompleteResults);
 
@@ -118,37 +120,115 @@ For now, you can continue to the execution visualizer to inspect the learning fl
       return;
     }
 
-    /*
-      FRONTEND PROTOTYPE ONLY
+    try {
+      const token =
+        localStorage.getItem("token") ||
+        sessionStorage.getItem("token") ||
+        localStorage.getItem("accessToken") ||
+        sessionStorage.getItem("accessToken");
 
-      We intentionally do NOT mark the student's solution as correct.
+      if (!token) {
+        setOutput("You are not logged in. Please log in again.");
+        return;
+      }
 
-      Later flow:
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
-      Student Code
-          ↓
-      VizStruct Backend
-          ↓
-      Judge0
-          ↓
-      Actual Execution
-          ↓
-      Test Case Comparison
-          ↓
-      Pass / Fail Results
-    */
+      if (!apiUrl) {
+        throw new Error(
+          "NEXT_PUBLIC_API_URL is not configured."
+        );
+      }
 
-    const pendingResults: TestResult[] = testCases.map((test) => ({
-      ...test,
-      output: "Awaiting real execution",
-      status: "pending",
-    }));
+      // Get practice problems from MongoDB through the backend.
+      const problemsResponse = await fetch(
+        `${apiUrl}/api/practice/problems`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-    setResults(pendingResults);
+      const problemsData = await problemsResponse.json();
 
-    setOutput(
-      "Solution submitted. Real test-case evaluation will be connected through Judge0."
-    );
+      if (!problemsResponse.ok) {
+        throw new Error(
+          problemsData.message ||
+            "Could not load practice problems."
+        );
+      }
+
+      // The backend returns an array of MongoDB problem documents.
+const problems: PracticeProblem[] = Array.isArray(problemsData)
+  ? problemsData
+  : problemsData.problems || problemsData.data || [];
+
+// Find the existing "Find the Largest Element" document.
+const problem = problems.find(
+  (item: { title?: string }) =>
+    item.title?.toLowerCase().includes("largest")
+);
+
+const problemId = problem?._id || problem?.id;
+
+if (!problemId) {
+  throw new Error(
+    "Find the Largest Element problem was not found in the database."
+  );
+}
+      // Save the student's code submission.
+   const submitResponse = await fetch(
+  `${apiUrl}/api/practice/problems/${problemId}/submit`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            code,
+          }),
+        }
+      );
+
+      const submitData = await submitResponse.json();
+
+      if (!submitResponse.ok) {
+        throw new Error(
+          submitData.message ||
+            "Could not submit the solution."
+        );
+      }
+
+      // Backend currently saves the submission,
+      // but real Python execution is not connected yet.
+      const pendingResults: TestResult[] = testCases.map(
+        (test) => ({
+          ...test,
+          output: "Awaiting real execution",
+          status: "pending",
+        })
+      );
+
+      setResults(pendingResults);
+
+      setOutput(
+        "Submission saved successfully. Real test-case evaluation will be connected through Judge0."
+      );
+    } catch (error) {
+      console.error(
+        "Practice submission error:",
+        error
+      );
+
+      setOutput(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong while submitting your solution."
+      );
+    }
   }
 
   function resetCode() {
@@ -185,7 +265,6 @@ For now, you can continue to the execution visualizer to inspect the learning fl
 
             <div className="relative mx-auto max-w-[1500px] px-5 py-7 lg:px-8">
               {/* PAGE HEADER */}
-
               <section className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -213,187 +292,201 @@ For now, you can continue to the execution visualizer to inspect the learning fl
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <div className="rounded-xl border border-slate-200 bg-white px-4 py-2.5">
-                    <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                      Problem
+                  <div className="rounded-xl border border-slate-200 bg-white px-4 py-2">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      Progress
                     </p>
 
-                    <p className="mt-0.5 text-xs font-bold">
-                      1 of 5
+                    <p className="mt-0.5 text-sm font-bold text-slate-700">
+                      {submitted ? "Submitted" : "In progress"}
                     </p>
                   </div>
 
-                  <div className="rounded-xl border border-slate-200 bg-white px-4 py-2.5">
-                    <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                      Language
-                    </p>
-
-                    <p className="mt-0.5 text-xs font-bold text-[#6C5CE7]">
-                      Python
-                    </p>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => router.push("/learn/arrays")}
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-50"
+                  >
+                    Back to Arrays
+                  </button>
                 </div>
               </section>
 
-              {/* WORKSPACE */}
-
-              <section className="mt-6 grid gap-5 xl:grid-cols-[0.82fr_1.3fr]">
+              {/* MAIN CONTENT */}
+              <div className="mt-7 grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
                 {/* LEFT SIDE */}
-
                 <div className="space-y-5">
-                  {/* Problem */}
-
-                  <div className="rounded-[26px] border border-slate-200/80 bg-white p-6 shadow-[0_15px_45px_rgba(23,23,43,0.04)]">
+                  {/* PROBLEM */}
+                  <div className="rounded-[26px] border border-slate-200 bg-white p-6 shadow-sm">
                     <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#6C5CE7]">
-                          PROBLEM
-                        </p>
+                      <h2 className="text-lg font-bold">
+                        Problem
+                      </h2>
 
-                        <h2 className="mt-2 text-xl font-bold">
-                          Find the largest value
-                        </h2>
-                      </div>
-
-                      <span className="rounded-lg bg-[#F3F1FA] px-3 py-1.5 text-[10px] font-bold text-slate-500">
-                        10 XP
+                      <span className="rounded-lg bg-[#ECE9FF] px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[#6C5CE7]">
+                        Arrays
                       </span>
                     </div>
 
-                    <p className="mt-5 text-sm leading-7 text-slate-600">
-                      Given an array of integers, write a function that
-                      returns the largest element in the array.
+                    <p className="mt-4 text-sm leading-7 text-slate-600">
+                      Write a function that finds and returns the
+                      largest element in an array.
                     </p>
 
-                    <p className="mt-3 text-sm leading-7 text-slate-600">
-                      Traverse the array and determine which value is
-                      greater than all the others.
-                    </p>
-
-                    {/* Example */}
-
-                    <div className="mt-6 rounded-2xl bg-[#F8F7FC] p-5">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
-                        EXAMPLE
+                    <div className="mt-5 rounded-2xl bg-slate-50 p-4">
+                      <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                        Example
                       </p>
 
-                      <div className="mt-4 space-y-3 font-mono text-xs">
-                        <div>
-                          <span className="text-slate-400">
-                            Input:
-                          </span>
-
-                          <span className="ml-2 font-semibold">
+                      <div className="mt-3 space-y-2 font-mono text-sm">
+                        <p>
+                          Input:{" "}
+                          <span className="text-[#6C5CE7]">
                             [4, 7, 2, 9, 5]
                           </span>
-                        </div>
+                        </p>
 
-                        <div>
-                          <span className="text-slate-400">
-                            Output:
-                          </span>
-
-                          <span className="ml-2 font-semibold text-[#6C5CE7]">
+                        <p>
+                          Output:{" "}
+                          <span className="font-bold text-[#317C77]">
                             9
                           </span>
-                        </div>
+                        </p>
                       </div>
                     </div>
 
-                    {/* Constraints */}
+                    <div className="mt-5">
+                      <h3 className="text-sm font-bold">
+                        Requirements
+                      </h3>
 
-                    <div className="mt-6">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
-                        CONSTRAINTS
-                      </p>
+                      <ul className="mt-3 space-y-2 text-sm text-slate-600">
+                        <li className="flex gap-2">
+                          <span className="text-[#6C5CE7]">
+                            •
+                          </span>
+                          Return the largest value in the array.
+                        </li>
 
-                      <div className="mt-3 space-y-2 text-xs text-slate-500">
-                        <p>
-                          • The array contains at least one element.
-                        </p>
+                        <li className="flex gap-2">
+                          <span className="text-[#6C5CE7]">
+                            •
+                          </span>
+                          Your solution should work with negative
+                          numbers.
+                        </li>
 
-                        <p>
-                          • Elements may be positive or negative
-                          integers.
-                        </p>
-
-                        <p>
-                          • Do not sort the array to solve the problem.
-                        </p>
-                      </div>
+                        <li className="flex gap-2">
+                          <span className="text-[#6C5CE7]">
+                            •
+                          </span>
+                          Traverse the array instead of sorting it.
+                        </li>
+                      </ul>
                     </div>
                   </div>
 
-                  {/* Learning Focus */}
+                  {/* TEST CASES */}
+                  <div className="rounded-[26px] border border-slate-200 bg-white p-6 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-lg font-bold">
+                        Test Cases
+                      </h2>
 
-                  <div className="rounded-[26px] border border-[#DCD8FF] bg-[#F0EDFF] p-6">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-xs font-bold text-[#6C5CE7] shadow-sm">
-                        VS
-                      </div>
-
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#6C5CE7]">
-                          LEARNING FOCUS
-                        </p>
-
-                        <p className="mt-1 text-xs text-slate-400">
-                          Recommended from your roadmap
-                        </p>
-                      </div>
+                      <span className="text-xs font-semibold text-slate-400">
+                        {testCases.length} cases
+                      </span>
                     </div>
 
-                    <p className="mt-5 text-sm font-bold">
-                      Focus on array traversal and comparisons.
-                    </p>
+                    <div className="mt-5 space-y-3">
+                      {testCases.map((test, index) => {
+                        const result = results[index];
 
-                    <p className="mt-3 text-xs leading-6 text-slate-500">
-                      Try solving the problem yourself first. If you get
-                      stuck, VizStruct can progressively guide you
-                      without immediately revealing the answer.
-                    </p>
-                  </div>
+                        return (
+                          <div
+                            key={index}
+                            className="rounded-2xl border border-slate-200 p-4"
+                          >
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs font-bold text-slate-500">
+                                Test Case {index + 1}
+                              </p>
 
-                  {/* Learning Rule */}
+                              {result && (
+                                <span
+                                  className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${
+                                    result.status === "passed"
+                                      ? "bg-[#E4F7F5] text-[#317C77]"
+                                      : result.status === "failed"
+                                        ? "bg-red-50 text-red-500"
+                                        : "bg-amber-50 text-amber-600"
+                                  }`}
+                                >
+                                  {result.status}
+                                </span>
+                              )}
+                            </div>
 
-                  <div className="rounded-[26px] border border-slate-200 bg-white p-5">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
-                      VIZSTRUCT LEARNING MODE
-                    </p>
+                            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                              <div>
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                  Input
+                                </p>
 
-                    <div className="mt-4 space-y-3">
-                      {[
-                        "Attempt the problem yourself",
-                        "Use progressive hints if needed",
-                        "Run and inspect your code",
-                        "Visualize execution",
-                        "Diagnose mistakes",
-                      ].map((item, index) => (
-                        <div
-                          key={item}
-                          className="flex items-center gap-3"
-                        >
-                          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#ECE9FF] text-[9px] font-bold text-[#6C5CE7]">
-                            {index + 1}
+                                <p className="mt-1 rounded-lg bg-slate-50 p-2 font-mono text-xs text-slate-700">
+                                  {test.input}
+                                </p>
+                              </div>
+
+                              <div>
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                  Expected
+                                </p>
+
+                                <p className="mt-1 rounded-lg bg-slate-50 p-2 font-mono text-xs text-slate-700">
+                                  {test.expected}
+                                </p>
+                              </div>
+                            </div>
+
+                            {result && (
+                              <div className="mt-3">
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                  Output
+                                </p>
+
+                                <p className="mt-1 rounded-lg bg-slate-50 p-2 font-mono text-xs text-slate-700">
+                                  {result.output}
+                                </p>
+                              </div>
+                            )}
                           </div>
-
-                          <p className="text-xs font-semibold text-slate-500">
-                            {item}
-                          </p>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
+
+                  {/* HINT */}
+                  {hintLevel > 0 && (
+                    <div className="rounded-[26px] border border-[#8EDBD5]/40 bg-[#E4F7F5] p-6">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-[#317C77]">
+                          Hint {hintLevel}
+                        </span>
+                      </div>
+
+                      <p className="mt-3 whitespace-pre-line text-sm leading-7 text-slate-600">
+                        {hints[hintLevel - 1]}
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* RIGHT SIDE */}
-
                 <div className="space-y-5">
                   {/* CODE EDITOR */}
-
                   <div className="overflow-hidden rounded-[26px] border border-[#34336D] bg-[#1E1E46] shadow-[0_20px_60px_rgba(23,23,43,0.16)]">
                     {/* Editor header */}
-
                     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-[#292865] px-5 py-3">
                       <div className="flex items-center gap-3">
                         <div className="flex gap-1.5">
@@ -423,7 +516,6 @@ For now, you can continue to the execution visualizer to inspect the learning fl
                     </div>
 
                     {/* Editor */}
-
                     <div className="relative">
                       <div className="pointer-events-none absolute bottom-0 left-0 top-0 w-12 border-r border-white/[0.06] bg-black/10" />
 
@@ -438,7 +530,6 @@ For now, you can continue to the execution visualizer to inspect the learning fl
                       />
 
                       {/* Line numbers */}
-
                       <div className="pointer-events-none absolute left-0 top-5 flex w-12 flex-col items-center font-mono text-[11px] leading-7 text-white/20">
                         {Array.from({
                           length: Math.max(
@@ -446,16 +537,17 @@ For now, you can continue to the execution visualizer to inspect the learning fl
                             14
                           ),
                         }).map((_, index) => (
-                          <span key={index}>{index + 1}</span>
+                          <span key={index}>
+                            {index + 1}
+                          </span>
                         ))}
                       </div>
                     </div>
 
                     {/* Buttons */}
-
                     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 bg-[#292865] px-5 py-4">
                       <p className="text-[10px] text-white/35">
-                        Frontend learning prototype
+                        Backend submission connected
                       </p>
 
                       <div className="flex flex-wrap gap-2">
@@ -464,7 +556,7 @@ For now, you can continue to the execution visualizer to inspect the learning fl
                           onClick={showHint}
                           className="rounded-xl border border-[#8EDBD5]/30 bg-[#8EDBD5]/10 px-5 py-2.5 text-xs font-bold text-[#8EDBD5] transition hover:bg-[#8EDBD5]/20"
                         >
-                          💡 Hint
+                          Hint
                         </button>
 
                         <button
@@ -472,280 +564,99 @@ For now, you can continue to the execution visualizer to inspect the learning fl
                           onClick={handleRun}
                           className="rounded-xl border border-white/15 bg-white/[0.07] px-5 py-2.5 text-xs font-bold text-white transition hover:bg-white/10"
                         >
-                          ▶ Run Code
+                          Run Code
                         </button>
 
                         <button
                           type="button"
                           onClick={handleSubmit}
-                          className="rounded-xl bg-[#6C5CE7] px-5 py-2.5 text-xs font-bold text-white transition hover:bg-[#5B4BCF]"
+                          className="rounded-xl bg-[#6C5CE7] px-5 py-2.5 text-xs font-bold text-white transition hover:bg-[#5D4DD6]"
                         >
-                          Submit →
+                          Submit
                         </button>
                       </div>
                     </div>
                   </div>
 
-                  {/* HINT */}
-
-                  {hintLevel > 0 && (
-                    <div className="rounded-[26px] border border-[#DCD8FF] bg-[#F0EDFF] p-5">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="h-2 w-2 rounded-full bg-[#8EDBD5]" />
-
-                            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#6C5CE7]">
-                              HINT {hintLevel} OF {hints.length}
-                            </p>
-                          </div>
-
-                          <p className="mt-3 whitespace-pre-line text-sm leading-6 text-slate-600">
-                            {hints[hintLevel - 1]}
-                          </p>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => setHintLevel(0)}
-                          className="text-xs font-bold text-slate-400 transition hover:text-[#17172B]"
-                        >
-                          ✕
-                        </button>
-                      </div>
-
-                      {hintLevel < hints.length && (
-                        <button
-                          type="button"
-                          onClick={showHint}
-                          className="mt-4 text-xs font-bold text-[#6C5CE7]"
-                        >
-                          I need another hint →
-                        </button>
-                      )}
-
-                      {hintLevel === hints.length && (
-                        <p className="mt-4 text-[10px] font-semibold text-slate-400">
-                          This is the strongest hint. Try translating the
-                          pseudocode into Python yourself.
-                        </p>
-                      )}
-                    </div>
-                  )}
-
-                  {/* TEST CASES / OUTPUT */}
-
-                  <div className="overflow-hidden rounded-[26px] border border-slate-200/80 bg-white shadow-[0_15px_45px_rgba(23,23,43,0.04)]">
-                    {/* Tabs */}
-
-                    <div className="flex items-center justify-between border-b border-slate-100 px-5">
-                      <div className="flex">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setActiveTab("testcases")
-                          }
-                          className={`border-b-2 px-4 py-4 text-xs font-bold transition ${
-                            activeTab === "testcases"
-                              ? "border-[#6C5CE7] text-[#6C5CE7]"
-                              : "border-transparent text-slate-400"
-                          }`}
-                        >
-                          Test Cases
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setActiveTab("output")}
-                          className={`border-b-2 px-4 py-4 text-xs font-bold transition ${
-                            activeTab === "output"
-                              ? "border-[#6C5CE7] text-[#6C5CE7]"
-                              : "border-transparent text-slate-400"
-                          }`}
-                        >
-                          Output
-                        </button>
-                      </div>
-
-                      {submitted && (
-                        <span className="rounded-full bg-[#FFF4D9] px-3 py-1.5 text-[10px] font-bold text-[#946A16]">
-                          Evaluation pending
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="p-5">
-                      {/* Test Cases */}
-
-                      {activeTab === "testcases" && (
-                        <div className="space-y-3">
-                          {testCases.map((test, index) => {
-                            const result = results[index];
-
-                            return (
-                              <div
-                                key={test.input}
-                                className="rounded-2xl border border-slate-100 bg-[#FAF9FC] p-4"
-                              >
-                                <div className="flex items-center justify-between">
-                                  <p className="text-xs font-bold">
-                                    Test Case {index + 1}
-                                  </p>
-
-                                  {result && (
-                                    <span
-                                      className={`text-[10px] font-bold ${
-                                        result.status === "passed"
-                                          ? "text-[#317C77]"
-                                          : result.status ===
-                                            "failed"
-                                          ? "text-[#B75A5A]"
-                                          : "text-[#946A16]"
-                                      }`}
-                                    >
-                                      {result.status === "passed"
-                                        ? "✓ Passed"
-                                        : result.status ===
-                                          "failed"
-                                        ? "✕ Not Passed"
-                                        : "• Pending"}
-                                    </span>
-                                  )}
-                                </div>
-
-                                <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                                  <div>
-                                    <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                                      Input
-                                    </p>
-
-                                    <code className="mt-1 block text-[11px] text-slate-600">
-                                      {test.input}
-                                    </code>
-                                  </div>
-
-                                  <div>
-                                    <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                                      Expected
-                                    </p>
-
-                                    <code className="mt-1 block text-[11px] text-slate-600">
-                                      {test.expected}
-                                    </code>
-                                  </div>
-
-                                  <div>
-                                    <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                                      Your Output
-                                    </p>
-
-                                    <code className="mt-1 block text-[11px] text-slate-600">
-                                      {result
-                                        ? result.output
-                                        : "Not tested"}
-                                    </code>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                      {/* Output */}
-
-                      {activeTab === "output" && (
-                        <div className="min-h-[170px] rounded-2xl bg-[#17172B] p-5">
-                          <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-[#8EDBD5]">
-                            CONSOLE
-                          </p>
-
-                          <pre className="mt-4 whitespace-pre-wrap font-mono text-xs leading-6 text-white/70">
-                            {output}
-                          </pre>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* VISUALIZATION */}
-
-                  {hasRun &&
-                    code.trim() &&
-                    !code.includes("pass") && (
-                      <div className="rounded-[26px] border border-[#DCD8FF] bg-gradient-to-r from-[#F0EDFF] to-white p-5">
-                        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="h-2 w-2 rounded-full bg-[#8EDBD5]" />
-
-                              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#6C5CE7]">
-                                EXECUTION VISUALIZATION
-                              </p>
-                            </div>
-
-                            <h3 className="mt-2 text-base font-bold">
-                              See what your code is doing.
-                            </h3>
-
-                            <p className="mt-1 max-w-xl text-xs leading-5 text-slate-500">
-                              VizStruct will visualize the student&apos;s
-                              own execution flow — including mistakes —
-                              instead of showing only a predefined correct
-                              solution.
-                            </p>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              router.push("/practice/visualize")
-                            }
-                            className="shrink-0 rounded-xl bg-[#17172B] px-5 py-3 text-xs font-bold text-white transition hover:-translate-y-0.5"
-                          >
-                            Visualize Execution →
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                  {/* SUBMISSION MESSAGE */}
-
-                  {submitted && (
-                    <div
-                      className={`rounded-[26px] border p-5 ${
-                        !code.trim() || code.includes("pass")
-                          ? "border-[#F1D5D5] bg-[#FFF6F6]"
-                          : "border-[#E8DDBA] bg-[#FFFBEE]"
-                      }`}
-                    >
-                      <p
-                        className={`text-[10px] font-bold uppercase tracking-[0.16em] ${
-                          !code.trim() || code.includes("pass")
-                            ? "text-[#B75A5A]"
-                            : "text-[#946A16]"
+                  {/* OUTPUT */}
+                  <div className="overflow-hidden rounded-[26px] border border-slate-200 bg-white shadow-sm">
+                    <div className="flex items-center gap-1 border-b border-slate-200 px-5">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setActiveTab("testcases")
+                        }
+                        className={`px-4 py-3 text-xs font-bold ${
+                          activeTab === "testcases"
+                            ? "border-b-2 border-[#6C5CE7] text-[#6C5CE7]"
+                            : "text-slate-400"
                         }`}
                       >
-                        {!code.trim() || code.includes("pass")
-                          ? "SOLUTION INCOMPLETE"
-                          : "SUBMISSION RECEIVED"}
-                      </p>
+                        Test Cases
+                      </button>
 
-                      <h3 className="mt-2 text-base font-bold">
-                        {!code.trim() || code.includes("pass")
-                          ? "Complete your solution before submitting."
-                          : "Real evaluation will be connected next."}
-                      </h3>
-
-                      <p className="mt-2 text-xs leading-6 text-slate-500">
-                        {!code.trim() || code.includes("pass")
-                          ? "Try solving the problem yourself or use the progressive hint system if you need guidance."
-                          : "During backend integration, VizStruct will send this exact code to Judge0, compare the actual output against the test cases, and use failures for misconception analysis."}
-                      </p>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setActiveTab("output")
+                        }
+                        className={`px-4 py-3 text-xs font-bold ${
+                          activeTab === "output"
+                            ? "border-b-2 border-[#6C5CE7] text-[#6C5CE7]"
+                            : "text-slate-400"
+                        }`}
+                      >
+                        Output
+                      </button>
                     </div>
-                  )}
+
+                    <div className="min-h-[170px] p-5">
+                      {activeTab === "testcases" ? (
+                        <div>
+                          <p className="text-xs font-bold text-slate-500">
+                            Submission status
+                          </p>
+
+                          <p className="mt-3 text-sm leading-7 text-slate-500">
+                            {submitted
+                              ? "Your code has been sent to the VizStruct backend."
+                              : "Submit your solution to save your progress."}
+                          </p>
+
+                          {hasRun && (
+                            <div className="mt-4 rounded-xl bg-slate-50 p-4">
+                              <p className="text-xs text-slate-500">
+                                Test-case execution is not connected
+                                yet.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div>
+                          <p className="whitespace-pre-line font-mono text-xs leading-6 text-slate-600">
+                            {output}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* EXECUTION NOTE */}
+                  <div className="rounded-[26px] border border-slate-200 bg-white p-5">
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                      Execution
+                    </p>
+
+                    <p className="mt-2 text-sm leading-6 text-slate-500">
+                      Your submission is currently saved to MongoDB.
+                      Actual Python execution and test-case evaluation
+                      will be added through a sandboxed execution
+                      service such as Judge0.
+                    </p>
+                  </div>
                 </div>
-              </section>
+              </div>
             </div>
           </div>
         </div>
