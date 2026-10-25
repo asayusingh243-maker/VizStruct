@@ -12,6 +12,7 @@ const practiceRoutes = require("./routes/practiceRoutes");
 const profileRoutes = require("./routes/profileRoutes");
 const progressRoutes = require("./routes/progressRoutes");
 const roadmapRoutes = require("./routes/roadmapRoutes");
+const mlRoutes = require("./routes/mlRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -48,6 +49,7 @@ app.use("/api/practice", practiceRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/progress", progressRoutes);
 app.use("/api/roadmap", roadmapRoutes);
+app.use("/api/ml", mlRoutes);
 
 app.use((req, res) => {
   res.status(404).json({

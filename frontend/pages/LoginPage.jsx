@@ -152,7 +152,7 @@ export const LoginPage = () => {
 
           {/* Footer link */}
           <p className="text-center text-xs text-zinc-500 mt-4 font-sans">
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
             <Link to="/register" className="text-blue-400 font-semibold hover:underline">
               Create account
             </Link>

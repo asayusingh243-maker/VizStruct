@@ -146,7 +146,7 @@ export const AuthBannerIllustration = () => {
       {/* Code preview block */}
       <div className="bg-[#121215] rounded p-3 border border-[#27272A] text-xs space-y-1.5 my-4">
         <div className="text-zinc-500 text-[10px]"># Stack Frame Inspector</div>
-        <div className="text-zinc-300">stack = [<span className="text-blue-400 font-mono">"("</span>, <span className="text-blue-400 font-mono">"&#123;"</span>]</div>
+        <div className="text-zinc-300">stack = [<span className="text-blue-400 font-mono">&quot;(&quot;</span>, <span className="text-blue-400 font-mono">&quot;&#123;&quot;</span>]</div>
         <div className="text-zinc-400">top = stack.<span className="text-amber-400">pop()</span></div>
         <div className="text-emerald-400 text-[11px] pt-1">✓ Match verified</div>
       </div>
