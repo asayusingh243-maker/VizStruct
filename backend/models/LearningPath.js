@@ -7,6 +7,7 @@ const learningPathSchema = new mongoose.Schema(
       topic: { type: String, required: true, trim: true },
       difficulty: { type: String, enum: ["easy", "medium", "hard"], default: "easy" },
       status: { type: String, enum: ["not_started", "in_progress", "completed"], default: "not_started" },
+      progress: {type: Number, default: 0, min: 0, max: 100 },
       order: { type: Number, required: true },
     }],
     currentTopic: { type: String, default: "", trim: true },

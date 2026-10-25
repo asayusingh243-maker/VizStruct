@@ -21,10 +21,10 @@ const getProfile = async (req, res) => {
     });
   } catch (error) {
     console.error("Get profile error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to load profile",
-    });
+   res.status(500).json({
+    success: false,
+    message: error.message || "Failed to update profile",
+  });
   }
 };
 
