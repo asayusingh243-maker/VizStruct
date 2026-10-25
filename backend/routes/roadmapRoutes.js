@@ -1,11 +1,9 @@
 const express = require("express");
-
-const { getRoadmap } = require("../controllers/roadmapController");
-
-const authMiddleware = require("../middleware/authMiddleware");
-
 const router = express.Router();
 
-router.get("/", authMiddleware, getRoadmap);
+const roadmapController = require("../controllers/roadmapController");
+const authMiddleware = require("../middleware/authMiddleware");
+
+router.get("/", authMiddleware, roadmapController.getRoadmap);
 
 module.exports = router;

@@ -39,8 +39,11 @@ export default function ArrayFundamentalsPage() {
     lessons.find((lesson) => lesson.id === activeLesson) ?? lessons[0];
 
   return (
-    <main className="min-h-screen bg-[#F8F7FC] text-[#17172B]">
-      <AppSidebar />
+    <main>
+  <div className="flex min-h-screen">
+    <AppSidebar />
+
+    <div className="min-w-0 flex-1"></div>
 
       <div className="lg:pl-64">
         <DashboardHeader />
@@ -517,6 +520,7 @@ for value in numbers:
             </aside>
           </div>
         </div>
+      </div>
       </div>
     </main>
   );

@@ -1,22 +1,10 @@
 const express = require("express");
-
-const {
-  getQuestions,
-  startAssessment,
-  submitAssessment,
-  getAssessmentResult,
-} = require("../controllers/assessmentController");
-
-const authMiddleware = require("../middleware/authMiddleware");
-
 const router = express.Router();
 
-router.get("/questions", authMiddleware, getQuestions);
+const diagnosticController = require("../controllers/diagnosticController");
+const authMiddleware = require("../middleware/authMiddleware");
 
-router.post("/start", authMiddleware, startAssessment);
-
-router.post("/submit", authMiddleware, submitAssessment);
-
-router.get("/result", authMiddleware, getAssessmentResult);
+router.get("/questions", diagnosticController.getQuestions);
+router.post("/submit", authMiddleware, diagnosticController.submitAssessment);
 
 module.exports = router;

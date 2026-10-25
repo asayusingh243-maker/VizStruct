@@ -2,15 +2,18 @@
 
 import { FormEvent, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
+  const router = useRouter();
+
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [keepLoggedIn, setKeepLoggedIn] = useState(true);
   const [error, setError] = useState("");
 
-  function handleLogin(event: FormEvent<HTMLFormElement>) {
+  async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
 
@@ -19,8 +22,40 @@ export default function LoginPage() {
       return;
     }
 
-    // The backend teammate will provide the login API endpoint and JWT response.
-    setError("The login service will be connected when the backend API is ready.");
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: email.trim(),
+            password,
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.message || "Invalid email or password.");
+        return;
+      }
+
+      const storage = keepLoggedIn ? localStorage : sessionStorage;
+
+      storage.setItem("token", data.token);
+      storage.setItem("user", JSON.stringify(data.user));
+
+      router.push("/dashboard");
+    } catch (error) {
+      console.error("Login error:", error);
+      setError(
+        "Could not reach the backend. Make sure the backend server is running."
+      );
+    }
   }
 
   return (
@@ -132,7 +167,10 @@ export default function LoginPage() {
 
               {/* Email */}
               <div>
-                <label htmlFor="email" className="text-sm font-semibold text-slate-700">
+                <label
+                  htmlFor="email"
+                  className="text-sm font-semibold text-slate-700"
+                >
                   Email address
                 </label>
 
@@ -150,7 +188,10 @@ export default function LoginPage() {
               {/* Password */}
               <div>
                 <div className="flex items-center justify-between">
-                  <label htmlFor="password" className="text-sm font-semibold text-slate-700">
+                  <label
+                    htmlFor="password"
+                    className="text-sm font-semibold text-slate-700"
+                  >
                     Password
                   </label>
 

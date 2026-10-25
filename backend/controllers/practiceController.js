@@ -1,24 +1,50 @@
 const Problem = require("../models/Problem");
+const Submission = require("../models/Submission");
 const ProblemProgress = require("../models/problemProgress");
+const Progress = require("../models/Progress");
+const ErrorLog = require("../models/ErrorLog");
+
+const publicProblem = (problem) => {
+  const obj = problem.toObject ? problem.toObject() : { ...problem };
+
+  obj.testCases = (obj.testCases || []).map((testCase) => ({
+    input: testCase.input,
+    ...(testCase.isHidden ? {} : { expectedOutput: testCase.expectedOutput }),
+    isHidden: testCase.isHidden,
+  }));
+
+  delete obj.solutionExplanation;
+  return obj;
+};
 
 const getProblems = async (req, res) => {
   try {
-    const problems = await Problem.find({
-      isActive: true,
-    }).select(
-      "title description topic difficulty languages tags"
-    );
+    const { topic, difficulty, language } = req.query;
+    const filter = { isActive: true };
 
-    res.status(200).json(problems);
+    if (topic) filter.topic = topic;
+    if (difficulty) filter.difficulty = difficulty;
+    if (language) filter.languages = language;
+
+    const problems = await Problem.find(filter)
+      .select("-solutionExplanation -testCases.expectedOutput")
+      .sort({ difficulty: 1, createdAt: 1 })
+      .lean();
+
+    res.json({
+      success: true,
+      problems,
+    });
   } catch (error) {
-    console.error("Get problems error:", error.message);
+    console.error("Get problems error:", error);
     res.status(500).json({
-      message: "Unable to fetch problems.",
+      success: false,
+      message: "Failed to load practice problems",
     });
   }
 };
 
-const getProblemById = async (req, res) => {
+const getProblem = async (req, res) => {
   try {
     const problem = await Problem.findOne({
       _id: req.params.id,
@@ -27,127 +53,158 @@ const getProblemById = async (req, res) => {
 
     if (!problem) {
       return res.status(404).json({
-        message: "Problem not found.",
+        success: false,
+        message: "Problem not found",
       });
     }
 
-    const safeProblem = problem.toObject();
-
-    safeProblem.testCases = safeProblem.testCases.filter(
-      (testCase) => !testCase.isHidden
-    );
-
-    res.status(200).json(safeProblem);
+    res.json({
+      success: true,
+      problem: publicProblem(problem),
+    });
   } catch (error) {
-    console.error("Get problem error:", error.message);
-    res.status(500).json({
-      message: "Unable to fetch problem.",
+    console.error("Get problem error:", error);
+    res.status(400).json({
+      success: false,
+      message: "Invalid problem ID",
     });
   }
 };
 
-const runCode = async (req, res) => {
-  try {
-    const problem = await Problem.findOne({
-      _id: req.params.id,
-      isActive: true,
-    });
+const recordSubmission = async (req, res) => {
+  const { code, language = "javascript" } = req.body;
 
-    if (!problem) {
-      return res.status(404).json({
-        message: "Problem not found.",
-      });
-    }
-
-    const { code } = req.body;
-
-    if (typeof code !== "string" || !code.trim()) {
-      return res.status(400).json({
-        message: "code is required.",
-      });
-    }
-
-    res.status(200).json({
-      message:
-        "Code received. Connect a sandboxed code execution service here.",
-      output: "Run your code using the configured execution service.",
-    });
-  } catch (error) {
-    console.error("Run code error:", error.message);
-    res.status(500).json({
-      message: "Unable to run code.",
+  if (!code || !String(code).trim()) {
+    return res.status(400).json({
+      success: false,
+      message: "Code is required",
     });
   }
-};
 
-const submitCode = async (req, res) => {
-  try {
-    const problem = await Problem.findOne({
-      _id: req.params.id,
-      isActive: true,
+  const problem = await Problem.findOne({
+    _id: req.params.id,
+    isActive: true,
+  });
+
+  if (!problem) {
+    return res.status(404).json({
+      success: false,
+      message: "Problem not found",
     });
+  }
 
-    if (!problem) {
-      return res.status(404).json({
-        message: "Problem not found.",
-      });
-    }
+  const submission = await Submission.create({
+    userId: req.user._id,
+    problemId: problem._id,
+    code: String(code),
+    language: String(language),
+    status: "pending",
+    totalTestCases: problem.testCases.length,
+  });
 
-    const { code } = req.body;
-
-    if (typeof code !== "string" || !code.trim()) {
-      return res.status(400).json({
-        message: "code is required.",
-      });
-    }
-
-    const record = await ProblemProgress.findOneAndUpdate(
-      {
+  await ProblemProgress.findOneAndUpdate(
+    {
+      userId: req.user._id,
+      problemId: problem._id,
+    },
+    {
+      $set: {
+        lastCode: String(code),
+        lastSubmissionId: submission._id,
+        lastActivity: new Date(),
+      },
+      $inc: {
+        attempts: 1,
+      },
+      $setOnInsert: {
         userId: req.user._id,
         problemId: problem._id,
+        status: "attempted",
       },
-      {
-        $set: {
-          lastCode: code,
-          lastActivity: new Date(),
-        },
-        $setOnInsert: {
-          status: "attempted",
-          solvedAt: null,
-        },
-        $inc: {
-          attempts: 1,
-        },
-      },
-      {
-        new: true,
-        upsert: true,
-        runValidators: true,
-        setDefaultsOnInsert: true,
-      }
-    );
+    },
+    {
+      upsert: true,
+      new: true,
+      setDefaultsOnInsert: true,
+    }
+  );
 
-    res.status(200).json({
+  await Progress.findOneAndUpdate(
+    { userId: req.user._id },
+    {
+     $inc: { totalSubmissions: 1 },
+      $set: {
+        lastActivity: new Date(),
+      },
+      $setOnInsert: {
+        userId: req.user._id,
+      },
+    },
+    {
+      upsert: true,
+      new: true,
+      setDefaultsOnInsert: true,
+    }
+  );
+
+  return submission;
+};
+
+const runProblem = async (req, res) => {
+  try {
+    const submission = await recordSubmission(req, res);
+
+    if (!submission) return;
+
+    res.json({
+      success: true,
       message:
-        "Attempt saved. Connect a sandboxed code runner to evaluate test cases.",
-      allPassed: false,
-      progress: {
-        problemId: record.problemId,
-        status: record.status,
-        attempts: record.attempts,
+        "Submission recorded. Code execution is not connected yet; configure Judge0 to execute submissions.",
+      submission: {
+        id: submission._id,
+        status: submission.status,
+        totalTestCases: submission.totalTestCases,
+        testCasesPassed: submission.testCasesPassed,
       },
     });
   } catch (error) {
-    console.error("Submit code error:", error.message);
+    console.error("Run problem error:", error);
     res.status(500).json({
-      message: "Unable to save practice attempt.",
+      success: false,
+      message: "Failed to record code execution request",
+    });
+  }
+};
+
+const submitProblem = async (req, res) => {
+  try {
+    const submission = await recordSubmission(req, res);
+
+    if (!submission) return;
+
+    res.status(201).json({
+      success: true,
+      message:
+        "Submission saved. Code execution is not connected yet; configure Judge0 before marking solutions accepted.",
+      submission: {
+        id: submission._id,
+        status: submission.status,
+        totalTestCases: submission.totalTestCases,
+        testCasesPassed: submission.testCasesPassed,
+      },
+    });
+  } catch (error) {
+    console.error("Submit problem error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to save submission",
     });
   }
 };
 
 module.exports = {
   getProblems,
-  getProblemById,
-  runCode,
-  submitCode,
+  getProblem,
+  runProblem,
+  submitProblem,
 };
