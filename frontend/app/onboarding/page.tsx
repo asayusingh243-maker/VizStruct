@@ -49,6 +49,7 @@ const steps: Step[] = [
       },
     ],
   },
+
   {
     id: "language",
     eyebrow: "PREFERRED LANGUAGE",
@@ -78,6 +79,7 @@ const steps: Step[] = [
       },
     ],
   },
+
   {
     id: "goal",
     eyebrow: "YOUR GOAL",
@@ -87,30 +89,27 @@ const steps: Step[] = [
     options: [
       {
         title: "Build Programming Fundamentals",
-        description:
-          "Strengthen variables, loops, conditions, functions, and logic.",
+        description: "Strengthen variables, loops, conditions, functions, and logic.",
         icon: "01",
       },
       {
         title: "Learn Data Structures",
-        description:
-          "Understand arrays, stacks, queues, linked lists, and more.",
+        description: "Understand arrays, stacks, queues, linked lists, and more.",
         icon: "02",
       },
       {
         title: "Improve Problem Solving",
-        description:
-          "Practice reasoning and develop stronger coding strategies.",
+        description: "Practice reasoning and develop stronger coding strategies.",
         icon: "03",
       },
       {
         title: "Prepare for Coding Interviews",
-        description:
-          "Work toward structured DSA and interview-style problems.",
+        description: "Work toward structured DSA and interview-style problems.",
         icon: "04",
       },
     ],
   },
+
   {
     id: "commitment",
     eyebrow: "LEARNING ROUTINE",
@@ -140,6 +139,7 @@ const steps: Step[] = [
       },
     ],
   },
+
   {
     id: "companion",
     eyebrow: "LEARNING COMPANION",
@@ -170,12 +170,13 @@ export default function OnboardingPage() {
   const router = useRouter();
 
   const [stepIndex, setStepIndex] = useState(0);
+
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState("");
 
   const currentStep = steps[stepIndex];
+
   const selectedAnswer = answers[currentStep.id];
+
   const progress = ((stepIndex + 1) / steps.length) * 100;
 
   function selectOption(value: string) {
@@ -183,80 +184,41 @@ export default function OnboardingPage() {
       ...previous,
       [currentStep.id]: value,
     }));
-
-    setError("");
   }
 
-  async function handleNext() {
-    if (!selectedAnswer || isSaving) return;
+  function handleNext() {
+    if (!selectedAnswer) return;
 
     if (stepIndex < steps.length - 1) {
       setStepIndex((previous) => previous + 1);
       return;
     }
 
-    setIsSaving(true);
-    setError("");
+    // Temporary frontend-only flow.
+    // Later this will save the learner profile through the backend.
+    console.log("VizStruct learner profile:", answers);
 
-    try {
-      const token = localStorage.getItem("vizstruct_token");
-
-      if (!token) {
-        throw new Error("Your session has expired. Please register again.");
-      }
-
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/profile`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            skillLevel: answers.experience,
-            programmingLanguages: [answers.language],
-            goals: [answers.goal],
-            learningPreferences: [answers.commitment],
-            interests: [answers.companion],
-          }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.message || "Failed to save your learner profile."
-        );
-      }
-
-      router.push("/diagnostic");
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to save your learner profile. Please try again."
-      );
-    } finally {
-      setIsSaving(false);
-    }
+    router.push("/diagnostic");
   }
 
   function handleBack() {
-    if (stepIndex > 0 && !isSaving) {
+    if (stepIndex > 0) {
       setStepIndex((previous) => previous - 1);
     }
   }
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#F8F7FC] text-[#17172B]">
+      {/* Background */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -left-28 top-20 h-80 w-80 rounded-full bg-[#ECE9FF] blur-[100px]" />
+
         <div className="absolute -right-20 top-1/3 h-80 w-80 rounded-full bg-[#E4F7F5] blur-[100px]" />
+
         <div className="absolute bottom-[-120px] left-1/3 h-72 w-72 rounded-full bg-[#F1ECFF] blur-[100px]" />
       </div>
 
+      {/* Grid */}
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.025]"
         style={{
@@ -267,6 +229,7 @@ export default function OnboardingPage() {
       />
 
       <div className="relative z-10">
+        {/* Header */}
         <header className="border-b border-[#17172B]/5 bg-[#F8F7FC]/80 backdrop-blur-xl">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5 lg:px-8">
             <button
@@ -298,7 +261,9 @@ export default function OnboardingPage() {
           </div>
         </header>
 
+        {/* Main */}
         <section className="mx-auto max-w-6xl px-6 py-12 lg:px-8 lg:py-16">
+          {/* Progress */}
           <div className="mx-auto max-w-3xl">
             <div className="flex items-center justify-between">
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#6C5CE7]">
@@ -318,6 +283,7 @@ export default function OnboardingPage() {
             </div>
           </div>
 
+          {/* Question */}
           <div className="mx-auto mt-12 max-w-3xl text-center">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#6C5CE7]">
               {currentStep.eyebrow}
@@ -332,6 +298,7 @@ export default function OnboardingPage() {
             </p>
           </div>
 
+          {/* Options */}
           <div
             className={`mx-auto mt-10 grid max-w-4xl gap-4 ${
               currentStep.options.length === 3
@@ -347,7 +314,6 @@ export default function OnboardingPage() {
                   key={option.title}
                   type="button"
                   onClick={() => selectOption(option.title)}
-                  disabled={isSaving}
                   className={`group relative rounded-2xl border p-6 text-left transition-all duration-200 ${
                     selected
                       ? "border-[#6C5CE7] bg-[#F0EDFF] shadow-[0_16px_40px_rgba(108,92,231,0.12)]"
@@ -388,13 +354,14 @@ export default function OnboardingPage() {
             })}
           </div>
 
+          {/* Navigation */}
           <div className="mx-auto mt-10 flex max-w-4xl items-center justify-between border-t border-slate-200/70 pt-7">
             <button
               type="button"
               onClick={handleBack}
-              disabled={stepIndex === 0 || isSaving}
+              disabled={stepIndex === 0}
               className={`rounded-xl px-5 py-3 text-sm font-semibold transition ${
-                stepIndex === 0 || isSaving
+                stepIndex === 0
                   ? "cursor-not-allowed text-slate-300"
                   : "text-slate-500 hover:bg-white hover:text-[#17172B]"
               }`}
@@ -420,27 +387,20 @@ export default function OnboardingPage() {
             <button
               type="button"
               onClick={handleNext}
-              disabled={!selectedAnswer || isSaving}
+              disabled={!selectedAnswer}
               className={`rounded-xl px-6 py-3 text-sm font-semibold transition ${
-                selectedAnswer && !isSaving
+                selectedAnswer
                   ? "bg-[#6C5CE7] text-white shadow-[0_10px_30px_rgba(108,92,231,0.18)] hover:-translate-y-0.5 hover:bg-[#5B4BCF]"
                   : "cursor-not-allowed bg-slate-200 text-slate-400"
               }`}
             >
-              {isSaving
-                ? "Saving..."
-                : stepIndex === steps.length - 1
-                  ? "Continue to Diagnostic →"
-                  : "Continue →"}
+              {stepIndex === steps.length - 1
+                ? "Continue to Diagnostic →"
+                : "Continue →"}
             </button>
           </div>
 
-          {error && (
-            <div className="mx-auto mt-6 max-w-4xl rounded-xl border border-red-200 bg-red-50 px-5 py-3 text-center text-sm font-medium text-red-600">
-              {error}
-            </div>
-          )}
-
+          {/* Bottom message */}
           <div className="mx-auto mt-10 max-w-xl rounded-2xl border border-[#DCD8FF] bg-white/70 px-5 py-4 text-center backdrop-blur">
             <p className="text-xs leading-5 text-slate-500">
               <span className="font-semibold text-[#6C5CE7]">

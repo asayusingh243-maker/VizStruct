@@ -3,89 +3,49 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { apiRequest, saveAuthToken } from "../../lib/api";
 
 export default function RegisterPage() {
   const router = useRouter();
-
   const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   async function handleRegister(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    event.stopPropagation();
-
     setError("");
 
-    if (
-      !fullName.trim() ||
-      !email.trim() ||
-      !password.trim() ||
-      !confirmPassword.trim()
-    ) {
-      setError("Please complete every field.");
-      return;
-    }
-
-    if (password.length < 8) {
-      setError("Your password must contain at least 8 characters.");
-      return;
-    }
-
     if (password !== confirmPassword) {
-      setError("Your passwords do not match.");
+      setError("Passwords do not match.");
       return;
     }
 
-    if (!acceptedTerms) {
-      setError("Please agree to the educational-use terms.");
-      return;
-    }
-
+    setSubmitting(true);
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/register`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            fullName: fullName.trim(),
-            email: email.trim(),
-            password,
-          }),
-        }
-      );
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.message || "Unable to create your account.");
-        return;
-      }
-
-      // Registration automatically logs the user in.
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
-
+      const result = await apiRequest<{ token: string }>("/auth/register", {
+        method: "POST",
+        body: JSON.stringify({ fullName, email, password }),
+      });
+      saveAuthToken(result.token);
       router.push("/dashboard");
-    } catch (error) {
-      console.error("Registration error:", error);
+    } catch (registerError) {
       setError(
-        "Could not reach the backend. Make sure the backend server is running."
+        registerError instanceof Error
+          ? registerError.message
+          : "Unable to create your account. Please try again."
       );
+    } finally {
+      setSubmitting(false);
     }
   }
 
   return (
     <main className="min-h-screen bg-[#F8F7FC] text-[#17172B]">
       <div className="grid min-h-screen lg:grid-cols-[0.9fr_1.1fr]">
-
         {/* LEFT SIDE */}
         <section className="relative hidden overflow-hidden bg-[#292865] px-12 py-10 text-white lg:flex lg:flex-col lg:justify-between">
           <div className="absolute -left-24 top-24 h-72 w-72 rounded-full bg-violet-400/20 blur-[100px]" />
@@ -149,7 +109,6 @@ export default function RegisterPage() {
         {/* RIGHT SIDE */}
         <section className="flex items-center justify-center px-6 py-12 sm:px-10">
           <div className="w-full max-w-md">
-
             <div className="mb-8 lg:hidden">
               <Link href="/" className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#ECE9FF] font-mono text-xs font-bold text-[#6C5CE7]">
@@ -177,70 +136,46 @@ export default function RegisterPage() {
               </p>
             </div>
 
-            {/* FORM */}
-            <form
-              onSubmit={handleRegister}
-              noValidate
-              className="mt-8 space-y-5"
-            >
-
-              {/* FULL NAME */}
+            <form onSubmit={handleRegister} className="mt-8 space-y-5">
               <div>
-                <label
-                  htmlFor="fullName"
-                  className="text-sm font-semibold text-slate-700"
-                >
+                <label className="text-sm font-semibold text-slate-700">
                   Full name
                 </label>
 
                 <input
-                  id="fullName"
                   type="text"
                   value={fullName}
                   onChange={(event) => setFullName(event.target.value)}
                   placeholder="Enter your name"
-                  autoComplete="name"
                   className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 outline-none transition placeholder:text-slate-400 focus:border-[#6C5CE7] focus:ring-4 focus:ring-violet-100"
                 />
               </div>
 
-              {/* EMAIL */}
               <div>
-                <label
-                  htmlFor="email"
-                  className="text-sm font-semibold text-slate-700"
-                >
+                <label className="text-sm font-semibold text-slate-700">
                   Email address
                 </label>
 
                 <input
-                  id="email"
                   type="email"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
                   placeholder="you@example.com"
-                  autoComplete="email"
                   className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 outline-none transition placeholder:text-slate-400 focus:border-[#6C5CE7] focus:ring-4 focus:ring-violet-100"
                 />
               </div>
 
-              {/* PASSWORD */}
               <div>
-                <label
-                  htmlFor="password"
-                  className="text-sm font-semibold text-slate-700"
-                >
+                <label className="text-sm font-semibold text-slate-700">
                   Password
                 </label>
 
                 <div className="relative mt-2">
                   <input
-                    id="password"
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                     placeholder="Create a password"
-                    autoComplete="new-password"
                     className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 pr-20 outline-none transition placeholder:text-slate-400 focus:border-[#6C5CE7] focus:ring-4 focus:ring-violet-100"
                   />
 
@@ -258,32 +193,23 @@ export default function RegisterPage() {
                 </p>
               </div>
 
-              {/* CONFIRM PASSWORD */}
               <div>
-                <label
-                  htmlFor="confirmPassword"
-                  className="text-sm font-semibold text-slate-700"
-                >
+                <label className="text-sm font-semibold text-slate-700">
                   Confirm password
                 </label>
 
                 <input
-                  id="confirmPassword"
                   type="password"
                   value={confirmPassword}
                   onChange={(event) => setConfirmPassword(event.target.value)}
                   placeholder="Re-enter your password"
-                  autoComplete="new-password"
                   className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 outline-none transition placeholder:text-slate-400 focus:border-[#6C5CE7] focus:ring-4 focus:ring-violet-100"
                 />
               </div>
 
-              {/* TERMS */}
               <label className="flex items-start gap-3 text-sm leading-6 text-slate-500">
                 <input
                   type="checkbox"
-                  checked={acceptedTerms}
-                  onChange={(event) => setAcceptedTerms(event.target.checked)}
                   className="mt-1 h-4 w-4 rounded border-slate-300"
                 />
 
@@ -294,32 +220,24 @@ export default function RegisterPage() {
                 </span>
               </label>
 
-              {/* ERROR MESSAGE */}
               {error && (
-                <p
-                  role="alert"
-                  className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-                >
+                <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
                   {error}
                 </p>
               )}
 
-              {/* SUBMIT */}
               <button
                 type="submit"
-                className="w-full rounded-xl bg-[#6C5CE7] px-6 py-3.5 font-semibold text-white shadow-[0_10px_30px_rgba(108,92,231,0.18)] transition hover:-translate-y-0.5 hover:bg-[#5B4BCF]"
+                disabled={submitting}
+                className="w-full rounded-xl bg-[#6C5CE7] px-6 py-3.5 font-semibold text-white shadow-[0_10px_30px_rgba(108,92,231,0.18)] transition hover:-translate-y-0.5 hover:bg-[#5B4BCF] disabled:cursor-wait disabled:opacity-60"
               >
-                Create Account →
+                {submitting ? "Creating account..." : "Create Account →"}
               </button>
             </form>
 
             <div className="mt-6 flex items-center gap-4">
               <div className="h-px flex-1 bg-slate-200" />
-
-              <span className="text-xs text-slate-400">
-                Already registered?
-              </span>
-
+              <span className="text-xs text-slate-400">Already registered?</span>
               <div className="h-px flex-1 bg-slate-200" />
             </div>
 
@@ -339,7 +257,6 @@ export default function RegisterPage() {
             >
               ← Back to homepage
             </Link>
-
           </div>
         </section>
       </div>

@@ -1,38 +1,22 @@
-
 const express = require("express");
 
-const router = express.Router();
-
-const diagnosticController = require("../controllers/diagnosticController");
+const {
+  getQuestions,
+  startAssessment,
+  submitAssessment,
+  getAssessmentResult,
+} = require("../controllers/assessmentController");
 
 const authMiddleware = require("../middleware/authMiddleware");
 
-/*
- * Diagnostic questions are public because the
- * questions themselves do not contain user data.
- */
-router.get(
-  "/questions",
-  diagnosticController.getQuestions
-);
+const router = express.Router();
 
-/*
- * Submitting a diagnostic requires a logged-in user.
- */
-router.post(
-  "/submit",
-  authMiddleware,
-  diagnosticController.submitAssessment
-);
+router.get("/questions", authMiddleware, getQuestions);
 
-/*
- * Diagnostic results belong to the logged-in user,
- * so authentication is required.
- */
-router.get(
-  "/result",
-  authMiddleware,
-  diagnosticController.getLatestResult
-);
+router.post("/start", authMiddleware, startAssessment);
+
+router.post("/submit", authMiddleware, submitAssessment);
+
+router.get("/result", authMiddleware, getAssessmentResult);
 
 module.exports = router;

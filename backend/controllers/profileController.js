@@ -1,40 +1,10 @@
-const User = require("../models/User");
+
+
 const LearnerProfile = require("../models/LearnerProfile");
 
-const getProfile = async (req, res) => {
-  try {
-    const profile = await LearnerProfile.findOne({
-      userId: req.user._id,
-    }).lean();
-
-    res.json({
-      success: true,
-      profile: {
-        user: {
-          id: req.user._id,
-          fullName: req.user.fullName,
-          email: req.user.email,
-          level: req.user.level,
-        },
-        learnerProfile: profile,
-      },
-    });
-  } catch (error) {
-    console.error("Get profile error:", error);
-   res.status(500).json({
-    success: false,
-    message: error.message || "Failed to update profile",
-  });
-  }
-};
-
-const updateProfile = async (req, res) => {
+const createOrUpdateProfile = async (req, res) => {
   try {
     const {
-      fullName,
-      name,
-      email,
-      level,
       skillLevel,
       programmingLanguages,
       strengths,
@@ -44,79 +14,63 @@ const updateProfile = async (req, res) => {
       goals,
     } = req.body;
 
-    const userUpdates = {};
-
-    if (fullName !== undefined || name !== undefined) {
-      userUpdates.fullName = String(fullName ?? name).trim();
-    }
-
-    if (email !== undefined) {
-      userUpdates.email = String(email).trim().toLowerCase();
-    }
-
-    if (level !== undefined) {
-      userUpdates.level = level;
-    }
-
-    const user = await User.findByIdAndUpdate(
-      req.user._id,
-      { $set: userUpdates },
-      { new: true, runValidators: true }
-    ).select("-password");
-
-    const profileUpdates = {};
-
-    if (skillLevel !== undefined) profileUpdates.skillLevel = skillLevel;
-    if (programmingLanguages !== undefined) {
-      profileUpdates.programmingLanguages = programmingLanguages;
-    }
-    if (strengths !== undefined) profileUpdates.strengths = strengths;
-    if (weaknesses !== undefined) profileUpdates.weaknesses = weaknesses;
-    if (learningPreferences !== undefined) {
-      profileUpdates.learningPreferences = learningPreferences;
-    }
-    if (interests !== undefined) profileUpdates.interests = interests;
-    if (goals !== undefined) profileUpdates.goals = goals;
-
-    const learnerProfile = await LearnerProfile.findOneAndUpdate(
+    const profile = await LearnerProfile.findOneAndUpdate(
       { userId: req.user._id },
       {
-        $set: profileUpdates,
-        $setOnInsert: { userId: req.user._id },
+        userId: req.user._id,
+        skillLevel,
+        programmingLanguages,
+        strengths,
+        weaknesses,
+        learningPreferences,
+        interests,
+        goals,
       },
       {
-        upsert: true,
         new: true,
+        upsert: true,
         runValidators: true,
       }
     );
 
-    res.json({
-      success: true,
-      message: "Profile updated successfully",
-      profile: {
-        user,
-        learnerProfile,
-      },
+    res.status(200).json({
+      message: "Learner profile saved successfully",
+      profile,
     });
   } catch (error) {
-    console.error("Update profile error:", error);
+    console.error("Profile save error:", error.message);
 
-    if (error.code === 11000) {
-      return res.status(409).json({
-        success: false,
-        message: "That email is already in use",
+    res.status(500).json({
+      message: "Server error while saving learner profile",
+    });
+  }
+};
+
+const getProfile = async (req, res) => {
+  try {
+    const profile = await LearnerProfile.findOne({
+      userId: req.user._id,
+    });
+
+    if (!profile) {
+      return res.status(404).json({
+        message: "Learner profile not found",
       });
     }
 
+    res.status(200).json({
+      profile,
+    });
+  } catch (error) {
+    console.error("Profile fetch error:", error.message);
+
     res.status(500).json({
-      success: false,
-      message: "Failed to update profile",
+      message: "Server error while fetching learner profile",
     });
   }
 };
 
 module.exports = {
+  createOrUpdateProfile,
   getProfile,
-  updateProfile,
 };

@@ -1,171 +1,75 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-type DiagnosticResult = {
-  score: number;
-  correctCount: number;
-  totalQuestions: number;
-  percentage: number;
-  strengths: string[];
-  weaknesses: string[];
-};
+const conceptResults = [
+  {
+    name: "Variables",
+    score: 92,
+    status: "Strong",
+    description: "You trace variable updates confidently.",
+  },
+  {
+    name: "Conditions",
+    score: 84,
+    status: "Strong",
+    description: "Your conditional-flow understanding is solid.",
+  },
+  {
+    name: "Loops",
+    score: 68,
+    status: "Improving",
+    description: "Basic iteration is clear, but loop boundaries need attention.",
+  },
+  {
+    name: "Arrays",
+    score: 54,
+    status: "Needs Practice",
+    description: "Indexing and traversal should be strengthened.",
+  },
+];
+
+const learningPath = [
+  {
+    number: "01",
+    title: "Array Fundamentals",
+    description: "Strengthen indexing, access, and array structure.",
+    state: "Start Here",
+  },
+  {
+    number: "02",
+    title: "Array Traversal",
+    description: "Trace how loops move through array elements.",
+    state: "Next",
+  },
+  {
+    number: "03",
+    title: "Loop Boundaries",
+    description: "Practice range limits and off-by-one reasoning.",
+    state: "Recommended",
+  },
+  {
+    number: "04",
+    title: "Combined Practice",
+    description: "Apply arrays and loops together in coding problems.",
+    state: "Locked",
+  },
+];
+
+function getStatusStyles(status: string) {
+  if (status === "Strong") {
+    return "bg-[#E4F7F5] text-[#317C77]";
+  }
+
+  if (status === "Improving") {
+    return "bg-[#FFF4DD] text-[#A66A12]";
+  }
+
+  return "bg-[#FCEAEC] text-[#B34D5A]";
+}
 
 export default function DiagnosticResultPage() {
   const router = useRouter();
-
-  const [result, setResult] = useState<DiagnosticResult | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    async function loadResult() {
-      try {
-        setLoading(true);
-        setError("");
-
-        const token =
-          localStorage.getItem("token") ||
-          sessionStorage.getItem("token");
-
-        if (!token) {
-          router.push("/login");
-          return;
-        }
-
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-
-        if (!apiUrl) {
-          throw new Error("NEXT_PUBLIC_API_URL is not configured.");
-        }
-
-        const response = await fetch(`${apiUrl}/api/diagnostic/result`, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(
-            data.message || "Failed to load diagnostic result."
-          );
-        }
-
-        const savedResult = data.result || data;
-
-        setResult({
-          score: Number(savedResult.score ?? 0),
-          correctCount: Number(savedResult.correctCount ?? 0),
-          totalQuestions: Number(savedResult.totalQuestions ?? 0),
-          percentage: Number(
-            savedResult.percentage ??
-              savedResult.scorePercentage ??
-              savedResult.score ??
-              0
-          ),
-          strengths: Array.isArray(savedResult.strengths)
-            ? savedResult.strengths
-            : [],
-          weaknesses: Array.isArray(savedResult.weaknesses)
-            ? savedResult.weaknesses
-            : [],
-        });
-      } catch (error) {
-        console.error("Diagnostic result loading error:", error);
-
-        setError(
-          error instanceof Error
-            ? error.message
-            : "Failed to load diagnostic result."
-        );
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadResult();
-  }, [router]);
-
-  if (loading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-[#F8F7FC]">
-        <p className="text-sm font-semibold text-slate-500">
-          Loading your diagnostic result...
-        </p>
-      </main>
-    );
-  }
-
-  if (error) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-[#F8F7FC] px-6">
-        <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
-          <h1 className="text-xl font-bold text-[#17172B]">
-            Unable to load your result
-          </h1>
-
-          <p className="mt-3 text-sm text-red-500">{error}</p>
-
-          <button
-            type="button"
-            onClick={() => window.location.reload()}
-            className="mt-5 rounded-xl bg-[#6C5CE7] px-5 py-3 text-sm font-bold text-white"
-          >
-            Try Again
-          </button>
-        </div>
-      </main>
-    );
-  }
-
-  if (!result) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-[#F8F7FC] px-6">
-        <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
-          <h1 className="text-xl font-bold text-[#17172B]">
-            No diagnostic result found
-          </h1>
-
-          <p className="mt-3 text-sm text-slate-500">
-            Complete the diagnostic assessment first.
-          </p>
-
-          <button
-            type="button"
-            onClick={() => router.push("/diagnostic")}
-            className="mt-5 rounded-xl bg-[#6C5CE7] px-5 py-3 text-sm font-bold text-white"
-          >
-            Take Diagnostic
-          </button>
-        </div>
-      </main>
-    );
-  }
-
-  const percentage = Math.max(0, Math.min(100, result.percentage));
-
-  const learnerLevel =
-    percentage >= 80
-      ? "Advanced"
-      : percentage >= 50
-        ? "Intermediate"
-        : "Beginner";
-
-  const focusTopic =
-    result.weaknesses.length > 0
-      ? result.weaknesses[0]
-      : result.strengths.length > 0
-        ? result.strengths[0]
-        : "Programming Fundamentals";
-
-  const focusDescription =
-    result.weaknesses.length > 0
-      ? `Your diagnostic shows that ${focusTopic} needs more practice. We will prioritize this area in your personalized learning path.`
-      : "Your diagnostic shows a balanced foundation. Continue building consistency through guided practice.";
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#F8F7FC] text-[#17172B]">
@@ -176,7 +80,7 @@ export default function DiagnosticResultPage() {
         <div className="absolute bottom-[-100px] left-1/3 h-72 w-72 rounded-full bg-[#F1ECFF] blur-[100px]" />
       </div>
 
-      {/* Grid */}
+      {/* Subtle grid */}
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.025]"
         style={{
@@ -232,8 +136,9 @@ export default function DiagnosticResultPage() {
             </h1>
 
             <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-slate-500">
-              Your diagnostic has been saved to your profile. VizStruct will
-              use these results to personalize your learning roadmap.
+              VizStruct analyzed your diagnostic performance to identify your
+              current strengths, concepts that need reinforcement, and the best
+              place to begin your learning path.
             </p>
           </div>
 
@@ -249,10 +154,7 @@ export default function DiagnosticResultPage() {
                 <div className="relative flex h-32 w-32 shrink-0 items-center justify-center rounded-full bg-[#ECE9FF]">
                   <div className="flex h-24 w-24 items-center justify-center rounded-full bg-white shadow-sm">
                     <div className="text-center">
-                      <p className="text-3xl font-bold text-[#6C5CE7]">
-                        {percentage}%
-                      </p>
-
+                      <p className="text-3xl font-bold text-[#6C5CE7]">74%</p>
                       <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                         Score
                       </p>
@@ -262,123 +164,132 @@ export default function DiagnosticResultPage() {
 
                 <div>
                   <span className="rounded-full bg-[#ECE9FF] px-3 py-1.5 text-xs font-bold text-[#6C5CE7]">
-                    {learnerLevel}
+                    Developing
                   </span>
 
                   <h2 className="mt-4 text-2xl font-bold">
-                    {result.correctCount} / {result.totalQuestions}
+                    Strong foundation.
                   </h2>
 
                   <p className="mt-2 text-sm leading-6 text-slate-500">
-                    Correct answers
+                    You understand the fundamentals. Your biggest opportunity
+                    is strengthening arrays and loop-boundary reasoning.
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Personalized analysis */}
+            {/* Detected */}
             <div className="rounded-[28px] bg-[#292865] p-7 text-white shadow-[0_20px_60px_rgba(41,40,101,0.15)]">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#8EDBD5]">
-                PERSONALIZED ANALYSIS
-              </p>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#8EDBD5]">
+                    VIZSTRUCT ANALYSIS
+                  </p>
 
-              <h2 className="mt-3 text-2xl font-bold">
-                What happens next
-              </h2>
+                  <h2 className="mt-3 text-2xl font-bold">
+                    What we detected
+                  </h2>
+                </div>
 
-              <p className="mt-4 text-sm leading-7 text-white/75">
-                Your diagnostic result has been connected to your learner
-                profile. Your strengths and weaknesses will be used to
-                prioritize your roadmap.
-              </p>
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/10 font-mono text-sm text-[#CFC9FF]">
+                  AI
+                </div>
+              </div>
 
-              <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.06] p-4">
-                <p className="text-xs font-bold text-[#CFC9FF]">
-                  CURRENT FOCUS
-                </p>
+              <div className="mt-6 space-y-3">
+                <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4">
+                  <p className="text-xs font-bold text-[#8EDBD5]">
+                    STRENGTH
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-white/75">
+                    Variable updates and conditional execution are understood
+                    consistently.
+                  </p>
+                </div>
 
-                <p className="mt-2 text-lg font-bold">{focusTopic}</p>
+                <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4">
+                  <p className="text-xs font-bold text-[#CFC9FF]">
+                    PATTERN DETECTED
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-white/75">
+                    Your reasoning becomes less consistent when indexing and
+                    loop boundaries appear together.
+                  </p>
+                </div>
 
-                <p className="mt-2 text-sm leading-6 text-white/70">
-                  {focusDescription}
-                </p>
+                <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4">
+                  <p className="text-xs font-bold text-[#8EDBD5]">
+                    RECOMMENDATION
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-white/75">
+                    Begin with array traversal before moving into combined
+                    array-and-loop problems.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Strengths and weaknesses */}
-          <div className="mt-6 grid gap-5 md:grid-cols-2">
-            {/* Strengths */}
-            <div className="rounded-[28px] border border-slate-200/80 bg-white p-7 shadow-[0_20px_60px_rgba(23,23,43,0.05)]">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#317C77]">
-                YOUR STRENGTHS
+          {/* Concept breakdown */}
+          <div className="mt-6 rounded-[28px] border border-slate-200/80 bg-white p-7 shadow-[0_20px_60px_rgba(23,23,43,0.05)]">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#6C5CE7]">
+                CONCEPT ANALYSIS
               </p>
 
               <h2 className="mt-2 text-2xl font-bold">
-                Concepts you understand well
+                Your learning profile
               </h2>
 
-              {result.strengths.length > 0 ? (
-                <div className="mt-6 space-y-3">
-                  {result.strengths.map((strength) => (
-                    <div
-                      key={strength}
-                      className="flex items-center gap-3 rounded-2xl border border-[#CFEDE9] bg-[#EAF9F7] p-4"
-                    >
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#D5F2EE] text-sm font-bold text-[#317C77]">
-                        ✓
-                      </span>
-
-                      <span className="text-sm font-semibold text-[#317C77]">
-                        {strength}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="mt-6 rounded-2xl bg-slate-50 p-4 text-sm text-slate-500">
-                  Your diagnostic did not identify a strong topic yet. Keep
-                  practicing and your profile will become more precise.
-                </p>
-              )}
+              <p className="mt-2 text-sm text-slate-500">
+                Your result is more than a total score. Each concept contributes
+                to your personalized path.
+              </p>
             </div>
 
-            {/* Weaknesses */}
-            <div className="rounded-[28px] border border-slate-200/80 bg-white p-7 shadow-[0_20px_60px_rgba(23,23,43,0.05)]">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#B34D5A]">
-                AREAS TO STRENGTHEN
-              </p>
+            <div className="mt-7 grid gap-4 md:grid-cols-2">
+              {conceptResults.map((concept) => (
+                <div
+                  key={concept.name}
+                  className="rounded-2xl border border-slate-200/80 bg-[#FCFBFE] p-5"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="font-bold">{concept.name}</h3>
 
-              <h2 className="mt-2 text-2xl font-bold">
-                Concepts that need practice
-              </h2>
-
-              {result.weaknesses.length > 0 ? (
-                <div className="mt-6 space-y-3">
-                  {result.weaknesses.map((weakness) => (
-                    <div
-                      key={weakness}
-                      className="flex items-center gap-3 rounded-2xl border border-[#F2D6DA] bg-[#FCEAEC] p-4"
-                    >
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-sm font-bold text-[#B34D5A]">
-                        !
-                      </span>
-
-                      <span className="text-sm font-semibold text-[#B34D5A]">
-                        {weakness}
-                      </span>
+                      <p className="mt-1 text-xs leading-5 text-slate-500">
+                        {concept.description}
+                      </p>
                     </div>
-                  ))}
+
+                    <span
+                      className={`shrink-0 rounded-full px-3 py-1.5 text-[10px] font-bold ${getStatusStyles(
+                        concept.status
+                      )}`}
+                    >
+                      {concept.status}
+                    </span>
+                  </div>
+
+                  <div className="mt-5 flex items-center gap-4">
+                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        className="h-full rounded-full bg-[#6C5CE7]"
+                        style={{ width: `${concept.score}%` }}
+                      />
+                    </div>
+
+                    <p className="w-9 text-right text-xs font-bold text-slate-500">
+                      {concept.score}%
+                    </p>
+                  </div>
                 </div>
-              ) : (
-                <p className="mt-6 rounded-2xl bg-slate-50 p-4 text-sm text-slate-500">
-                  No major weaknesses were identified from this diagnostic.
-                </p>
-              )}
+              ))}
             </div>
           </div>
 
-          {/* Recommended starting point */}
+          {/* Starting point */}
           <div className="mt-6 rounded-[28px] border border-[#DCD8FF] bg-[#F0EDFF] p-7">
             <div className="grid items-center gap-6 md:grid-cols-[1fr_auto]">
               <div>
@@ -387,45 +298,115 @@ export default function DiagnosticResultPage() {
                 </p>
 
                 <h2 className="mt-3 text-3xl font-bold tracking-tight">
-                  Focus on {focusTopic}.
+                  Start with Array Fundamentals.
                 </h2>
 
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-                  Your personalized roadmap will prioritize this concept based
-                  on your diagnostic performance. You can continue learning
-                  from there at your own pace.
+                  You already have enough understanding of variables and
+                  conditions to move forward. Strengthening arrays first will
+                  make upcoming loop and data-structure problems easier to
+                  understand.
                 </p>
               </div>
 
               <div className="rounded-2xl bg-white px-6 py-5 shadow-sm">
                 <p className="text-xs font-semibold text-slate-400">
-                  CURRENT LEVEL
+                  Priority Concept
                 </p>
-
                 <p className="mt-1 font-bold text-[#6C5CE7]">
-                  {learnerLevel}
+                  Arrays
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Actions */}
-          <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <button
-              type="button"
-              onClick={() => router.push("/roadmap")}
-              className="rounded-xl bg-[#6C5CE7] px-7 py-3 text-sm font-bold text-white shadow-[0_10px_30px_rgba(108,92,231,0.18)] transition hover:bg-[#5B4BCF]"
-            >
-              View My Roadmap →
-            </button>
+          {/* Learning path */}
+          <div className="mt-12">
+            <div className="text-center">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#6C5CE7]">
+                YOUR INITIAL ROADMAP
+              </p>
+
+              <h2 className="mt-3 text-3xl font-bold tracking-tight">
+                A path built around what you need next.
+              </h2>
+            </div>
+
+            <div className="mx-auto mt-8 max-w-4xl space-y-3">
+              {learningPath.map((item, index) => (
+                <div
+                  key={item.number}
+                  className={`flex items-center gap-5 rounded-2xl border p-5 ${
+                    index === 0
+                      ? "border-[#6C5CE7] bg-white shadow-[0_12px_35px_rgba(108,92,231,0.09)]"
+                      : "border-slate-200/80 bg-white/80"
+                  }`}
+                >
+                  <div
+                    className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl font-mono text-xs font-bold ${
+                      index === 0
+                        ? "bg-[#6C5CE7] text-white"
+                        : "bg-[#ECE9FF] text-[#6C5CE7]"
+                    }`}
+                  >
+                    {item.number}
+                  </div>
+
+                  <div className="flex-1">
+                    <h3 className="font-bold">{item.title}</h3>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {item.description}
+                    </p>
+                  </div>
+
+                  <span
+                    className={`hidden rounded-full px-3 py-1.5 text-[10px] font-bold sm:block ${
+                      index === 0
+                        ? "bg-[#E4F7F5] text-[#317C77]"
+                        : "bg-[#F3F1FA] text-slate-500"
+                    }`}
+                  >
+                    {item.state}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* CTA */}
+          <div className="mx-auto mt-12 max-w-4xl rounded-[30px] bg-[#17172B] px-7 py-9 text-center text-white sm:px-10">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#8EDBD5]">
+              YOUR PROFILE IS READY
+            </p>
+
+            <h2 className="mt-3 text-3xl font-bold">
+              Ready to start learning?
+            </h2>
+
+            <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-white/60">
+              Your learner profile and initial roadmap are ready. Your path will
+              continue adapting as VizStruct learns from your performance.
+            </p>
 
             <button
               type="button"
               onClick={() => router.push("/dashboard")}
-              className="rounded-xl border border-slate-200 bg-white px-7 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
+              className="mt-7 rounded-xl bg-[#6C5CE7] px-7 py-3.5 text-sm font-bold text-white shadow-[0_10px_30px_rgba(108,92,231,0.25)] transition hover:-translate-y-0.5 hover:bg-[#5B4BCF]"
             >
-              Go to Dashboard
+              Build My Learning Path →
             </button>
+
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-white/35">
+              <span>Assess</span>
+              <span>→</span>
+              <span>Diagnose</span>
+              <span>→</span>
+              <span className="text-[#8EDBD5]">Personalize</span>
+              <span>→</span>
+              <span>Practice</span>
+              <span>→</span>
+              <span>Adapt</span>
+            </div>
           </div>
         </section>
       </div>

@@ -1,88 +1,136 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 type Question = {
-  _id: string;
-  question: string;
-  topic: string;
+  id: number;
+  concept: string;
   difficulty: string;
-  language: string;
+  title: string;
+  description: string;
+  code?: string;
   options: string[];
-  explanation?: string;
 };
+
+const questions: Question[] = [
+  {
+    id: 1,
+    concept: "Variables",
+    difficulty: "Foundation",
+    title: "What value will be printed?",
+    description: "Trace the variable updates before choosing your answer.",
+    code: `x = 5
+x = x + 3
+x = x * 2
+
+print(x)`,
+    options: ["8", "10", "13", "16"],
+  },
+  {
+    id: 2,
+    concept: "Conditions",
+    difficulty: "Foundation",
+    title: "Which output will this code produce?",
+    description: "Follow the condition carefully.",
+    code: `score = 72
+
+if score >= 80:
+    print("A")
+elif score >= 60:
+    print("B")
+else:
+    print("C")`,
+    options: ["A", "B", "C", "No output"],
+  },
+  {
+    id: 3,
+    concept: "Loops",
+    difficulty: "Foundation",
+    title: "How many times will the loop execute?",
+    description: "Think about the values produced by range().",
+    code: `for i in range(1, 5):
+    print(i)`,
+    options: ["3 times", "4 times", "5 times", "Infinite times"],
+  },
+  {
+    id: 4,
+    concept: "Arrays",
+    difficulty: "Core",
+    title: "Which value is accessed?",
+    description: "Remember that Python lists use zero-based indexing.",
+    code: `numbers = [4, 7, 2, 9]
+
+print(numbers[2])`,
+    options: ["4", "7", "2", "9"],
+  },
+  {
+    id: 5,
+    concept: "Execution Flow",
+    difficulty: "Core",
+    title: "What is the final value of total?",
+    description: "Trace each iteration and update the variable.",
+    code: `total = 0
+
+for i in range(3):
+    total = total + i`,
+    options: ["2", "3", "5", "6"],
+  },
+  {
+    id: 6,
+    concept: "Functions",
+    difficulty: "Core",
+    title: "What will the function return?",
+    description: "Follow the argument through the function.",
+    code: `def calculate(x):
+    return x * x
+
+result = calculate(4)`,
+    options: ["4", "8", "16", "20"],
+  },
+  {
+    id: 7,
+    concept: "Loop Boundaries",
+    difficulty: "Reasoning",
+    title: "Which value will NOT be printed?",
+    description:
+      "Pay attention to the upper boundary used by range().",
+    code: `for i in range(2, 6):
+    print(i)`,
+    options: ["2", "4", "5", "6"],
+  },
+  {
+    id: 8,
+    concept: "Problem Solving",
+    difficulty: "Reasoning",
+    title: "Which approach correctly finds the largest value?",
+    description:
+      "Choose the most appropriate basic strategy for an unsorted list.",
+    options: [
+      "Always return the first element",
+      "Compare each element while keeping the current maximum",
+      "Return the last element",
+      "Add all elements together",
+    ],
+  },
+];
 
 export default function DiagnosticPage() {
   const router = useRouter();
 
-  const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    async function loadQuestions() {
-      try {
-        setLoading(true);
-        setError("");
-
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-
-        if (!apiUrl) {
-          throw new Error("NEXT_PUBLIC_API_URL is not configured.");
-        }
-
-        const response = await fetch(
-          `${apiUrl}/api/diagnostic/questions`
-        );
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(
-            data.message || "Failed to load diagnostic questions."
-          );
-        }
-
-        setQuestions(data.questions || []);
-      } catch (error) {
-        console.error("Diagnostic loading error:", error);
-
-        setError(
-          error instanceof Error
-            ? error.message
-            : "Failed to load diagnostic questions."
-        );
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadQuestions();
-  }, []);
+  const [answers, setAnswers] = useState<Record<number, string>>({});
 
   const currentQuestion = questions[currentIndex];
-
-  const selectedAnswer = currentQuestion
-    ? answers[currentQuestion._id]
-    : undefined;
+  const selectedAnswer = answers[currentQuestion.id];
 
   const answeredCount = Object.keys(answers).length;
-
-  const progress =
-    questions.length > 0
-      ? ((currentIndex + 1) / questions.length) * 100
-      : 0;
+  const progress = ((currentIndex + 1) / questions.length) * 100;
 
   function selectAnswer(answer: string) {
-    if (!currentQuestion) return;
-
     setAnswers((previous) => ({
       ...previous,
-      [currentQuestion._id]: answer,
+      [currentQuestion.id]: answer,
     }));
   }
 
@@ -99,106 +147,13 @@ export default function DiagnosticPage() {
       setCurrentIndex((previous) => previous - 1);
     }
   }
-  async function handleSubmit() {
-    if (!selectedAnswer || submitting) return;
 
-    try {
-      setSubmitting(true);
-      setError("");
+  function handleSubmit() {
+    if (!selectedAnswer) return;
 
-      const token =
-        localStorage.getItem("token") ||
-        sessionStorage.getItem("token");
+    console.log("Diagnostic answers:", answers);
 
-      if (!token) {
-        router.push("/login");
-        return;
-      }
-
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-
-      if (!apiUrl) {
-        throw new Error("NEXT_PUBLIC_API_URL is not configured.");
-      }
-
-      const response = await fetch(
-        `${apiUrl}/api/diagnostic/submit`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            answers,
-          }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.message || "Failed to submit diagnostic."
-        );
-      }
-
-      router.push("/diagnostic/result");
-    } catch (error) {
-      console.error("Diagnostic submission error:", error);
-
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Failed to submit diagnostic."
-      );
-    } finally {
-      setSubmitting(false);
-    }
-}
-
-  if (loading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-[#F8F7FC]">
-        <p className="text-sm font-semibold text-slate-500">
-          Loading diagnostic...
-        </p>
-      </main>
-    );
-  }
-
-  if (error) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-[#F8F7FC] px-6">
-        <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
-          <h1 className="text-xl font-bold">
-            Unable to load diagnostic
-          </h1>
-
-          <p className="mt-3 text-sm text-red-500">
-            {error}
-          </p>
-
-          <button
-            type="button"
-            onClick={() => window.location.reload()}
-            className="mt-5 rounded-xl bg-[#6C5CE7] px-5 py-3 text-sm font-bold text-white"
-          >
-            Try Again
-          </button>
-        </div>
-      </main>
-    );
-  }
-
-  if (!currentQuestion) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-[#F8F7FC]">
-        <p className="text-sm font-semibold text-slate-500">
-          No diagnostic questions are available.
-        </p>
-      </main>
-    );
+    router.push("/diagnostic/result");
   }
 
   return (
@@ -209,7 +164,7 @@ export default function DiagnosticPage() {
         <div className="absolute -right-24 top-1/3 h-80 w-80 rounded-full bg-[#E4F7F5] blur-[100px]" />
       </div>
 
-      {/* Grid */}
+      {/* Subtle grid */}
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.025]"
         style={{
@@ -224,7 +179,6 @@ export default function DiagnosticPage() {
         <header className="border-b border-[#17172B]/5 bg-[#F8F7FC]/85 backdrop-blur-xl">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5 lg:px-8">
             <button
-              type="button"
               onClick={() => router.push("/")}
               className="flex items-center gap-3"
             >
@@ -284,12 +238,12 @@ export default function DiagnosticPage() {
 
           {/* Assessment */}
           <div className="mx-auto mt-9 grid max-w-5xl gap-6 lg:grid-cols-[1fr_280px]">
-            {/* Main card */}
+            {/* Main question card */}
             <div className="rounded-[28px] border border-slate-200/80 bg-white p-6 shadow-[0_20px_60px_rgba(23,23,43,0.06)] sm:p-8">
               {/* Tags */}
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full bg-[#ECE9FF] px-3 py-1.5 text-xs font-bold text-[#6C5CE7]">
-                  {currentQuestion.topic}
+                  {currentQuestion.concept}
                 </span>
 
                 <span className="rounded-full bg-[#E4F7F5] px-3 py-1.5 text-xs font-semibold text-[#317C77]">
@@ -300,18 +254,38 @@ export default function DiagnosticPage() {
               {/* Question */}
               <div className="mt-6">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
-                  Question {currentIndex + 1}
+                  Question {currentQuestion.id}
                 </p>
 
                 <h2 className="mt-3 text-2xl font-bold tracking-tight sm:text-3xl">
-                  {currentQuestion.question}
+                  {currentQuestion.title}
                 </h2>
 
                 <p className="mt-3 leading-7 text-slate-500">
-                  Assess your understanding of{" "}
-                  {currentQuestion.topic}.
+                  {currentQuestion.description}
                 </p>
               </div>
+
+              {/* Code */}
+              {currentQuestion.code && (
+                <div className="mt-7 overflow-hidden rounded-2xl bg-[#17172B]">
+                  <div className="flex items-center justify-between border-b border-white/10 px-5 py-3">
+                    <div className="flex gap-1.5">
+                      <span className="h-2.5 w-2.5 rounded-full bg-white/20" />
+                      <span className="h-2.5 w-2.5 rounded-full bg-white/20" />
+                      <span className="h-2.5 w-2.5 rounded-full bg-white/20" />
+                    </div>
+
+                    <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-white/40">
+                      Python
+                    </p>
+                  </div>
+
+                  <pre className="overflow-x-auto p-5 font-mono text-sm leading-7 text-[#EDEBFF]">
+                    <code>{currentQuestion.code}</code>
+                  </pre>
+                </div>
+              )}
 
               {/* Options */}
               <div className="mt-7 grid gap-3">
@@ -378,16 +352,14 @@ export default function DiagnosticPage() {
                   <button
                     type="button"
                     onClick={handleSubmit}
-                    disabled={!selectedAnswer || submitting}
+                    disabled={!selectedAnswer}
                     className={`rounded-xl px-6 py-3 text-sm font-semibold transition ${
-                      selectedAnswer && !submitting
+                      selectedAnswer
                         ? "bg-[#6C5CE7] text-white shadow-[0_10px_30px_rgba(108,92,231,0.18)] hover:bg-[#5B4BCF]"
                         : "cursor-not-allowed bg-slate-200 text-slate-400"
                     }`}
                   >
-                    {submitting
-                      ? "Submitting..."
-                      : "Submit Diagnostic →"}
+                    Submit Diagnostic →
                   </button>
                 ) : (
                   <button
@@ -414,8 +386,8 @@ export default function DiagnosticPage() {
                 </p>
 
                 <p className="mt-3 text-sm leading-6 text-slate-600">
-                  Your answers help VizStruct estimate your current
-                  understanding before creating your learning path.
+                  Your answers help VizStruct estimate your current understanding
+                  before creating your learning path.
                 </p>
               </div>
 
@@ -426,15 +398,12 @@ export default function DiagnosticPage() {
 
                 <div className="mt-5 grid grid-cols-4 gap-2">
                   {questions.map((question, index) => {
-                    const answered = Boolean(
-                      answers[question._id]
-                    );
-
+                    const answered = Boolean(answers[question.id]);
                     const active = index === currentIndex;
 
                     return (
                       <button
-                        key={question._id}
+                        key={question.id}
                         type="button"
                         onClick={() => setCurrentIndex(index)}
                         className={`flex h-10 items-center justify-center rounded-xl text-xs font-bold transition ${
@@ -445,7 +414,7 @@ export default function DiagnosticPage() {
                               : "bg-[#F5F4F8] text-slate-400"
                         }`}
                       >
-                        {index + 1}
+                        {question.id}
                       </button>
                     );
                   })}
@@ -454,7 +423,7 @@ export default function DiagnosticPage() {
                 <div className="mt-5 space-y-3 border-t border-slate-100 pt-4">
                   <div className="flex items-center gap-2 text-xs text-slate-500">
                     <span className="h-2.5 w-2.5 rounded-full bg-[#6C5CE7]" />
-                    Current
+                    Current question
                   </div>
 
                   <div className="flex items-center gap-2 text-xs text-slate-500">
@@ -469,33 +438,23 @@ export default function DiagnosticPage() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-white p-5">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-bold">
-                    Progress
-                  </p>
-
-                  <p className="text-xs font-bold text-[#6C5CE7]">
-                    {answeredCount}/{questions.length}
-                  </p>
-                </div>
-
-                <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
-                  <div
-                    className="h-full rounded-full bg-[#6C5CE7] transition-all"
-                    style={{
-                      width: `${
-                        questions.length > 0
-                          ? (answeredCount / questions.length) * 100
-                          : 0
-                      }%`,
-                    }}
-                  />
-                </div>
-
-                <p className="mt-3 text-xs text-slate-400">
-                  Answer each question to complete your assessment.
+              <div className="rounded-2xl bg-[#292865] p-5 text-white">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#8EDBD5]">
+                  VizStruct Tip
                 </p>
+
+                <p className="mt-3 text-sm leading-6 text-white/70">
+                  Don&apos;t guess based on syntax alone. Trace how each value
+                  changes during execution.
+                </p>
+
+                <div className="mt-4 flex items-center gap-2 font-mono text-xs text-[#CFC9FF]">
+                  <span>TRACE</span>
+                  <span>→</span>
+                  <span>THINK</span>
+                  <span>→</span>
+                  <span>ANSWER</span>
+                </div>
               </div>
             </aside>
           </div>
