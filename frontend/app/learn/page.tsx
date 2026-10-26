@@ -48,11 +48,10 @@ export default function LearnPage() {
   const router = useRouter();
 
   return (
-  <main className="min-h-screen bg-[#F8F7FC] text-[#17172B]">
-    <div className="flex min-h-screen">
+    <main className="min-h-screen bg-[#F8F7FC] text-[#17172B]">
       <AppSidebar />
 
-      <div className="min-w-0 flex-1">
+      <div className="lg:pl-64">
         <DashboardHeader />
 
         <div className="px-5 py-5 sm:px-7 lg:px-9">
@@ -359,7 +358,6 @@ export default function LearnPage() {
           </section>
         </div>
       </div>
-    </div>
-  </main>
+    </main>
   );
 }

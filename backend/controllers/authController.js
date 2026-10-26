@@ -1,158 +1,82 @@
 const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-
+const generateToken = require("../utils/generateToken");
 const User = require("../models/User");
-const LearnerProfile = require("../models/LearnerProfile");
-const Progress = require("../models/Progress");
 
-const createToken = (userId) =>
-  jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: "7d" });
-
-const register = async (req, res) => {
+async function registerUser(req, res) {
   try {
-    const { fullName, name, email, password } = req.body;
-    const normalizedEmail = String(email || "").trim().toLowerCase();
-    const displayName = String(fullName || name || "").trim();
+    const fullName = typeof req.body.fullName === "string" ? req.body.fullName.trim() : "";
+    const email = typeof req.body.email === "string" ? req.body.email.trim().toLowerCase() : "";
+    const password = req.body.password;
 
-    if (!displayName || !normalizedEmail || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "Full name, email and password are required",
-      });
+    if (!fullName || !email || typeof password !== "string") {
+      return res.status(400).json({ message: "Full name, email and password are required." });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ message: "Password must be at least 8 characters." });
     }
 
-    if (String(password).length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: "Password must be at least 6 characters",
-      });
-    }
-
-    const existingUser = await User.findOne({ email: normalizedEmail });
-
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(409).json({
-        success: false,
-        message: "An account with this email already exists",
-      });
+      return res.status(409).json({ message: "An account with this email already exists." });
     }
 
-    const hashedPassword = await bcrypt.hash(String(password), 12);
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = await User.create({ fullName, email, password: hashedPassword });
+    const token = generateToken(user._id.toString());
 
-    const user = await User.create({
-      fullName: displayName,
-      email: normalizedEmail,
-      password: hashedPassword,
-      level: "Beginner",
-    });
-
-    await Promise.all([
-      LearnerProfile.create({
-        userId: user._id,
-        skillLevel: "beginner",
-      }),
-      Progress.create({
-        userId: user._id,
-      }),
-    ]);
-
-    const token = createToken(user._id.toString());
-
-    res.status(201).json({
-      success: true,
-      message: "Registration successful",
+    return res.status(201).json({
+      message: "Account created successfully.",
       token,
       user: {
-        id: user._id,
+        id: user._id.toString(),
         fullName: user.fullName,
         email: user.email,
         level: user.level,
       },
     });
   } catch (error) {
-    console.error("Register error:", error);
-
-    if (error.code === 11000) {
-      return res.status(409).json({
-        success: false,
-        message: "An account with this email already exists",
-      });
+    if (error && error.code === 11000) {
+      return res.status(409).json({ message: "An account with this email already exists." });
     }
-
-    res.status(500).json({
-      success: false,
-      message: "Registration failed",
-    });
+    console.error("registerUser:", error);
+    return res.status(500).json({ message: "Unable to create the account right now." });
   }
-};
+}
 
-const login = async (req, res) => {
+async function loginUser(req, res) {
   try {
-    const { email, password } = req.body;
-    const normalizedEmail = String(email || "").trim().toLowerCase();
+    const email = typeof req.body.email === "string" ? req.body.email.trim().toLowerCase() : "";
+    const password = req.body.password;
 
-    if (!normalizedEmail || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "Email and password are required",
-      });
+    if (!email || typeof password !== "string" || !password) {
+      return res.status(400).json({ message: "Email and password are required." });
     }
 
-    const user = await User.findOne({ email: normalizedEmail }).select("+password");
-
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid email or password",
-      });
+    const user = await User.findOne({ email }).select("+password");
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      return res.status(401).json({ message: "Invalid email or password." });
     }
 
-    const passwordMatches = await bcrypt.compare(String(password), user.password);
-
-    if (!passwordMatches) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid email or password",
-      });
-    }
-
-    const token = createToken(user._id.toString());
-
-    res.json({
-      success: true,
-      message: "Login successful",
+    const token = generateToken(user._id.toString());
+    return res.json({
+      message: "Logged in successfully.",
       token,
       user: {
-        id: user._id,
+        id: user._id.toString(),
         fullName: user.fullName,
         email: user.email,
         level: user.level,
       },
     });
   } catch (error) {
-    console.error("Login error:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Login failed",
-    });
+    console.error("loginUser:", error);
+    return res.status(500).json({ message: "Unable to log in right now." });
   }
-};
+}
 
-const me = async (req, res) => {
-  res.json({
-    success: true,
-    user: {
-      id: req.user._id,
-      fullName: req.user.fullName,
-      email: req.user.email,
-      level: req.user.level,
-    },
-  });
-};
+function getCurrentUser(req, res) {
+  const { _id, fullName, email, level, createdAt } = req.user;
+  return res.json({ id: _id.toString(), fullName, email, level, createdAt });
+}
 
-module.exports = {
-  register,
-  login,
-  me,
-};
+module.exports = { registerUser, loginUser, getCurrentUser };

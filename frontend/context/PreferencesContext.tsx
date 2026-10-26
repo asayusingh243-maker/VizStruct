@@ -66,8 +66,6 @@ export function PreferencesProvider({
 
   const [loaded, setLoaded] = useState(false);
 
-  // Loading saved browser preferences intentionally hydrates React state.
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     try {
       const stored = window.localStorage.getItem(STORAGE_KEY);
@@ -114,7 +112,6 @@ export function PreferencesProvider({
 
     setLoaded(true);
   }, []);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     if (!loaded) return;

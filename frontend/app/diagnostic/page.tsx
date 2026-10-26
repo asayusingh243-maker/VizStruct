@@ -115,17 +115,6 @@ result = calculate(4)`,
   },
 ];
 
-const correctAnswers: Record<number, string> = {
-  1: "16",
-  2: "B",
-  3: "4 times",
-  4: "2",
-  5: "3",
-  6: "16",
-  7: "6",
-  8: "Compare each element while keeping the current maximum",
-};
-
 export default function DiagnosticPage() {
   const router = useRouter();
 
@@ -159,69 +148,10 @@ export default function DiagnosticPage() {
     }
   }
 
-  async function handleSubmit() {
+  function handleSubmit() {
     if (!selectedAnswer) return;
 
-    const submission = {
-      ...answers,
-      [currentQuestion.id]: selectedAnswer,
-    };
-
-    const totalQuestions = questions.length;
-    const correctCount = questions.reduce((count, question) => {
-      return count + (submission[question.id] === correctAnswers[question.id] ? 1 : 0);
-    }, 0);
-
-    const incorrectCount = totalQuestions - correctCount;
-    const accuracy = correctCount / totalQuestions;
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-
-    const learnerPayload = {
-      practice_problems: Math.max(6, Math.round(8 + correctCount * 2.5)),
-      accuracy: Number(accuracy.toFixed(2)),
-      avg_attempts: Number((1 + incorrectCount * 0.5).toFixed(2)),
-      hints_used: Math.max(0, incorrectCount - 1),
-      execution_errors: incorrectCount * 2,
-      visualizations_used: Math.max(4, Math.round(correctCount * 3 + 2)),
-      avg_time_minutes: Math.max(10, Math.round(9 + totalQuestions + incorrectCount * 3)),
-    };
-
-    try {
-      const response = await fetch(`${apiBaseUrl}/api/ml/predict`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(learnerPayload),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || "Unable to generate ML prediction.");
-      }
-
-      const summary = {
-        score: Math.round(accuracy * 100),
-        correctCount,
-        totalQuestions,
-        prediction: result.prediction,
-        payload: learnerPayload,
-      };
-
-      localStorage.setItem("diagnosticResult", JSON.stringify(summary));
-    } catch {
-      localStorage.setItem(
-        "diagnosticResult",
-        JSON.stringify({
-          score: Math.round(accuracy * 100),
-          correctCount,
-          totalQuestions,
-          prediction: null,
-          payload: learnerPayload,
-        })
-      );
-    }
+    console.log("Diagnostic answers:", answers);
 
     router.push("/diagnostic/result");
   }

@@ -1,22 +1,19 @@
 const express = require("express");
-const router = express.Router();
 
-const practiceController = require("../controllers/practiceController");
+const {
+  getProblems,
+  getProblemById,
+  runCode,
+  submitCode,
+} = require("../controllers/practiceController");
+
 const authMiddleware = require("../middleware/authMiddleware");
 
-router.get("/problems", practiceController.getProblems);
-router.get("/problems/:id", practiceController.getProblem);
+const router = express.Router();
 
-router.post(
-  "/problems/:id/run",
-  authMiddleware,
-  practiceController.runProblem
-);
-
-router.post(
-  "/problems/:id/submit",
-  authMiddleware,
-  practiceController.submitProblem
-);
+router.get("/problems", authMiddleware, getProblems);
+router.get("/problems/:id", authMiddleware, getProblemById);
+router.post("/problems/:id/run", authMiddleware, runCode);
+router.post("/problems/:id/submit", authMiddleware, submitCode);
 
 module.exports = router;

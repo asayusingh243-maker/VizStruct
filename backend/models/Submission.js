@@ -2,25 +2,87 @@ const mongoose = require("mongoose");
 
 const submissionSchema = new mongoose.Schema(
   {
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    problemId: { type: mongoose.Schema.Types.ObjectId, ref: "Problem", required: true },
-    code: { type: String, required: true },
-    language: { type: String, required: true },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+
+    problemId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Problem",
+      required: true,
+    },
+
+    code: {
+      type: String,
+      required: true,
+    },
+
+    language: {
+      type: String,
+      required: true,
+    },
+
     status: {
       type: String,
-      enum: ["pending", "running", "accepted", "wrong_answer", "compile_error", "runtime_error", "time_limit", "memory_limit", "error"],
+      enum: [
+        "pending",
+        "running",
+        "accepted",
+        "wrong_answer",
+        "compile_error",
+        "runtime_error",
+        "time_limit",
+        "memory_limit",
+        "error",
+      ],
       default: "pending",
     },
-    executionTime: { type: Number, default: null },
-    memoryUsed: { type: Number, default: null },
-    output: { type: String, default: "" },
-    errorMessage: { type: String, default: "" },
-    testCasesPassed: { type: Number, default: 0 },
-    totalTestCases: { type: Number, default: 0 },
-    judge0SubmissionId: { type: String, default: null },
-    submittedAt: { type: Date, default: Date.now },
+
+    executionTime: {
+      type: Number,
+      default: null,
+    },
+
+    memoryUsed: {
+      type: Number,
+      default: null,
+    },
+
+    output: {
+      type: String,
+      default: "",
+    },
+
+    errorMessage: {
+      type: String,
+      default: "",
+    },
+
+    testCasesPassed: {
+      type: Number,
+      default: 0,
+    },
+
+    totalTestCases: {
+      type: Number,
+      default: 0,
+    },
+
+    judge0SubmissionId: {
+      type: String,
+      default: null,
+    },
+
+    submittedAt: {
+      type: Date,
+      default: Date.now,
+    },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
 module.exports = mongoose.model("Submission", submissionSchema);

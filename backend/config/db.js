@@ -2,17 +2,15 @@ const mongoose = require("mongoose");
 
 const connectDB = async () => {
   try {
-    const mongoURI = process.env.MONGODB_URI;
-
-    if (!mongoURI) {
-      throw new Error("MONGODB_URI is not defined in backend/.env");
+    if (!process.env.MONGODB_URI) {
+      throw new Error("MONGODB_URI is not configured.");
     }
 
-    const connection = await mongoose.connect(mongoURI);
+    await mongoose.connect(process.env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 10000,
+    });
 
-    console.log(
-      `MongoDB Atlas connected: ${connection.connection.host}`
-    );
+    console.log("MongoDB connected successfully.");
   } catch (error) {
     console.error("MongoDB connection error:", error.message);
     process.exit(1);

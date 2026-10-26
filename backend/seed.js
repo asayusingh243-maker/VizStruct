@@ -3,7 +3,7 @@ require("dotenv").config();
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 
-const connectDB = require("./config/db");
+const connectDB = require("./data/db");
 
 const User = require("./models/User");
 const LearnerProfile = require("./models/LearnerProfile");
@@ -126,107 +126,175 @@ const seedDatabase = async () => {
     console.log(
       `${questions.length} diagnostic questions created/updated`
     );
-    const problem = await Problem.findOneAndUpdate(
-  {
-    title: "Find the Largest Element",
-  },
-  {
-    $set: {
-      title: "Find the Largest Element",
-      description:
-        "Given an array of integers, find and return the largest element.",
-      topic: "Arrays",
-      difficulty: "easy",
-      languages: ["JavaScript", "Python"],
-      inputFormat:
-        "The first line contains an integer n. The second line contains n integers.",
-      outputFormat:
-        "Print the largest element in the array.",
-      constraints: [
-        "1 <= n <= 1000",
-        "The array contains integers.",
-      ],
-      testCases: [
-        {
-          input: "5\n1 8 3 2 6",
-          expectedOutput: "8",
-          isHidden: false,
+    await Problem.findOneAndUpdate(
+      { title: "Find the Largest Element" },
+      {
+        $set: {
+          title: "Find the Largest Element",
+          description:
+            "Given a sequence of integers, print the largest value.",
+          topic: "Arrays",
+          difficulty: "easy",
+          languages: ["Python"],
+          inputFormat: "A space-separated sequence of integers.",
+          outputFormat: "Print the largest integer.",
+          constraints: [
+            "The input contains at least one integer.",
+            "The input contains at most 10,000 integers.",
+          ],
+          testCases: [
+            {
+              input: "4 7 2 9 5",
+              expectedOutput: "9",
+              isHidden: false,
+            },
+            {
+              input: "12 3 8 6",
+              expectedOutput: "12",
+              isHidden: false,
+            },
+            {
+              input: "-5 -2 -9 -1",
+              expectedOutput: "-1",
+              isHidden: false,
+            },
+            {
+              input: "0 -1 -8 -3",
+              expectedOutput: "0",
+              isHidden: true,
+            },
+          ],
+          starterCode: {
+            Python:
+              "def find_largest(arr):\n    # Write your solution here\n    pass\n\n\nnumbers = list(map(int, input().split()))\nprint(find_largest(numbers))",
+          },
+          tags: ["arrays", "fundamentals"],
+          isActive: true,
         },
-        {
-          input: "4\n10 4 7 2",
-          expectedOutput: "10",
-          isHidden: true,
-        },
-      ],
-      starterCode: {
-        JavaScript:
-          "const fs = require('fs');\nconst input = fs.readFileSync(0, 'utf8').trim().split(/\\s+/).map(Number);\nconst n = input[0];\nconst arr = input.slice(1, n + 1);\n\n// Find the largest element.\n",
-        Python:
-          "n = int(input())\narr = list(map(int, input().split()))\n\n# Find the largest element.\n",
       },
-      tags: ["arrays", "loops", "maximum"],
-      solutionExplanation:
-        "Read the array and keep track of the largest value while traversing its elements.",
-      isActive: true,
-    },
-  },
-  {
-    new: true,
-    upsert: true,
-    runValidators: true,
-    setDefaultsOnInsert: true,
-  }
-);
+      {
+        new: true,
+        upsert: true,
+        runValidators: true,
+        setDefaultsOnInsert: true,
+      }
+    );
+
+    console.log("Find the Largest Element problem created/updated");
+    const problem = await Problem.findOneAndUpdate(
+      {
+        title: "Sum of Two Numbers",
+      },
+      {
+        $set: {
+          title: "Sum of Two Numbers",
+
+          description:
+            "Write a program that takes two numbers and returns their sum.",
+
+          topic: "Variables",
+
+          difficulty: "easy",
+
+          languages: ["JavaScript", "Python"],
+
+          inputFormat:
+            "Two numbers are provided as input.",
+
+          outputFormat:
+            "Print the sum of the two numbers.",
+
+          constraints: [
+            "The numbers are integers.",
+            "The numbers are within a reasonable range.",
+          ],
+
+          testCases: [
+            {
+              input: "2 3",
+              expectedOutput: "5",
+              isHidden: false,
+            },
+            {
+              input: "10 20",
+              expectedOutput: "30",
+              isHidden: true,
+            },
+          ],
+
+          starterCode: {
+            JavaScript:
+              "const input = require('fs').readFileSync(0, 'utf8').trim().split(/\\s+/).map(Number);",
+
+            Python:
+              "a, b = map(int, input().split())",
+          },
+
+          tags: ["variables", "basic", "arithmetic"],
+
+          solutionExplanation:
+            "Read two numbers and add them together.",
+
+          isActive: true,
+        },
+      },
+      {
+        new: true,
+        upsert: true,
+        runValidators: true,
+        setDefaultsOnInsert: true,
+      }
+    );
 
     console.log("Problem created/updated");
     await RecoveryExercise.findOneAndUpdate(
-  {
-    title: "Practice Finding the Largest Element",
-  },
-  {
-    $set: {
-      title: "Practice Finding the Largest Element",
+      {
+        title: "Practice Basic Variables",
+      },
+      {
+        $set: {
+          title: "Practice Basic Variables",
 
-      description:
-        "Practice traversing an array and identifying the largest element.",
+          description:
+            "Practice storing values in variables and using them in simple calculations.",
 
-      topic: "Arrays",
+          topic: "Variables",
 
-      misconception:
-        "Difficulty understanding how to traverse an array and keep track of the largest value.",
+          misconception:
+            "Difficulty understanding how values are stored and used in variables.",
 
-      difficulty: "easy",
+          difficulty: "easy",
 
-      language: "JavaScript",
+          language: "JavaScript",
 
-      instructions: [
-        "Create an array of numbers.",
-        "Start with the first element as the largest value.",
-        "Traverse the remaining elements.",
-        "Update the largest value whenever a larger element is found.",
-        "Display the largest value.",
-      ],
+          instructions: [
+            "Create two variables.",
+            "Store numbers in the variables.",
+            "Add the values together.",
+            "Display the result.",
+          ],
 
-      hints: [
-        "Use a loop to visit each element.",
-        "Keep a variable that stores the largest value seen so far.",
-      ],
+          hints: [
+            "Use let or const to create variables.",
+            "Use the + operator to add the values.",
+          ],
 
-      expectedConcept:
-        "The largest element of an array can be found by traversing the array while tracking the maximum value.",
+          expectedConcept:
+            "Variables store values that can be used in expressions.",
 
-      relatedProblemId: problem._id,
+          relatedProblemId: problem._id,
 
-      isActive: true,
-    },
-  },
-  {
-    new: true,
-    upsert: true,
-    runValidators: true,
-    setDefaultsOnInsert: true,
-  }
-);
+          isActive: true,
+        },
+      },
+      {
+        new: true,
+        upsert: true,
+        runValidators: true,
+        setDefaultsOnInsert: true,
+      }
+    );
+
     console.log("Recovery exercise created/updated");
 
     console.log("\n=================================");

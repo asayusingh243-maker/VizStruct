@@ -1,20 +1,6 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
-
-type DiagnosticPrediction = {
-  cluster?: number;
-  learner_segment?: string;
-  note?: string;
-};
-
-type DiagnosticResult = {
-  score: number;
-  correctCount: number;
-  totalQuestions: number;
-  prediction: DiagnosticPrediction | null;
-};
 
 const conceptResults = [
   {
@@ -82,56 +68,8 @@ function getStatusStyles(status: string) {
   return "bg-[#FCEAEC] text-[#B34D5A]";
 }
 
-function getLearnerProfileSummary(prediction: DiagnosticPrediction | null) {
-  if (!prediction?.learner_segment) {
-    return {
-      label: "Developing",
-      summary: "Your performance suggests steady improvement with room to strengthen fundamentals.",
-    };
-  }
-
-  if (prediction.learner_segment.includes("Strong")) {
-    return {
-      label: "Strong",
-      summary: "You are showing a strong practice pattern and are ready to extend your understanding.",
-    };
-  }
-
-  if (prediction.learner_segment.includes("Needs additional support")) {
-    return {
-      label: "Needs Support",
-      summary: "The model indicates that confidence and fluency need more guided practice before moving on.",
-    };
-  }
-
-  return {
-    label: "Developing",
-    summary: "Your pattern is trending upward. More targeted practice will turn this momentum into consistency.",
-  };
-}
-
 export default function DiagnosticResultPage() {
   const router = useRouter();
-  const [result] = useState<DiagnosticResult | null>(() => {
-    if (typeof window === "undefined") {
-      return null;
-    }
-
-    const savedResult = localStorage.getItem("diagnosticResult");
-    if (!savedResult) {
-      return null;
-    }
-
-    try {
-      return JSON.parse(savedResult) as DiagnosticResult;
-    } catch {
-      return null;
-    }
-  });
-
-  const score = result?.score ?? 74;
-  const learnerProfile = getLearnerProfileSummary(result?.prediction ?? null);
-  const learnerSegment = result?.prediction?.learner_segment ?? "Developing practice pattern";
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#F8F7FC] text-[#17172B]">
@@ -216,7 +154,7 @@ export default function DiagnosticResultPage() {
                 <div className="relative flex h-32 w-32 shrink-0 items-center justify-center rounded-full bg-[#ECE9FF]">
                   <div className="flex h-24 w-24 items-center justify-center rounded-full bg-white shadow-sm">
                     <div className="text-center">
-                      <p className="text-3xl font-bold text-[#6C5CE7]">{score}%</p>
+                      <p className="text-3xl font-bold text-[#6C5CE7]">74%</p>
                       <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                         Score
                       </p>
@@ -226,15 +164,16 @@ export default function DiagnosticResultPage() {
 
                 <div>
                   <span className="rounded-full bg-[#ECE9FF] px-3 py-1.5 text-xs font-bold text-[#6C5CE7]">
-                    {learnerProfile.label}
+                    Developing
                   </span>
 
                   <h2 className="mt-4 text-2xl font-bold">
-                    {learnerSegment}
+                    Strong foundation.
                   </h2>
 
                   <p className="mt-2 text-sm leading-6 text-slate-500">
-                    {learnerProfile.summary}
+                    You understand the fundamentals. Your biggest opportunity
+                    is strengthening arrays and loop-boundary reasoning.
                   </p>
                 </div>
               </div>

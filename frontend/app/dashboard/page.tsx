@@ -1,277 +1,24 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import AppSidebar from "../../components/dashboard/AppSidebar";
 import DashboardHeader from "../../components/dashboard/DashboardHeader";
 
-type UserProfile = {
-  id: string;
-  fullName?: string;
-  email?: string;
-  level?: string;
-};
+const skills = [
+  { name: "Variables", score: 92, label: "Strong" },
+  { name: "Conditions", score: 84, label: "Strong" },
+  { name: "Loops", score: 68, label: "Improving" },
+  { name: "Arrays", score: 54, label: "Focus Area" },
+];
 
-type LearnerProfile = {
-  skillLevel?: string;
-  programmingLanguages?: string[];
-  strengths?: string[];
-  weaknesses?: string[];
-  learningPreferences?: string[];
-  interests?: string[];
-  goals?: string[];
-};
-
-type ProfileResponse = {
-  user?: UserProfile;
-  learnerProfile?: LearnerProfile | null;
-};
-
-type TopicProgress = {
-  topic: string;
-  attempted: number;
-  solved: number;
-  accuracy: number;
-};
-
-type ProgressData = {
-  problemsAttempted: number;
-  problemsSolved: number;
-  problemsFailed: number;
-  accuracy: number;
-  topicsCompleted: number;
-  topicProgress: TopicProgress[];
-  totalSubmissions: number;
-  lastActivity?: string;
-};
-
-type RoadmapTopic = {
-  topic: string;
-  difficulty?: string;
-  order?: number;
-  status?: string;
-};
-
-type RoadmapData = {
-  topics?: RoadmapTopic[];
-  currentTopic?: string;
-  completedTopics?: string[];
-};
+const roadmap = [
+  { name: "Array Fundamentals", status: "Current", complete: 35 },
+  { name: "Array Traversal", status: "Next", complete: 0 },
+  { name: "Loop Boundaries", status: "Upcoming", complete: 0 },
+];
 
 export default function DashboardPage() {
   const router = useRouter();
-
-  const [profile, setProfile] = useState<ProfileResponse | null>(null);
-  const [progress, setProgress] = useState<ProgressData | null>(null);
-  const [roadmap, setRoadmap] = useState<RoadmapData | null>(null);
-
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    async function loadDashboard() {
-      try {
-        setLoading(true);
-        setError("");
-
-        const token =
-          localStorage.getItem("token") ||
-          sessionStorage.getItem("token") ||
-          localStorage.getItem("accessToken") ||
-          sessionStorage.getItem("accessToken");
-
-        if (!token) {
-          router.push("/login");
-          return;
-        }
-
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-
-        if (!apiUrl) {
-          throw new Error("NEXT_PUBLIC_API_URL is not configured.");
-        }
-
-        const headers = {
-          Authorization: `Bearer ${token}`,
-        };
-
-        const [profileResponse, progressResponse, roadmapResponse] =
-          await Promise.all([
-            fetch(`${apiUrl}/api/profile`, {
-              method: "GET",
-              headers,
-            }),
-            fetch(`${apiUrl}/api/progress`, {
-              method: "GET",
-              headers,
-            }),
-            fetch(`${apiUrl}/api/roadmap`, {
-              method: "GET",
-              headers,
-            }),
-          ]);
-
-        const profileData = await profileResponse.json();
-        const progressData = await progressResponse.json();
-        const roadmapData = await roadmapResponse.json();
-
-        if (!profileResponse.ok) {
-          throw new Error(
-            profileData.message || "Could not load your profile."
-          );
-        }
-
-        if (!progressResponse.ok) {
-          throw new Error(
-            progressData.message || "Could not load your progress."
-          );
-        }
-
-        if (!roadmapResponse.ok) {
-          throw new Error(
-            roadmapData.message || "Could not load your roadmap."
-          );
-        }
-
-        setProfile(profileData.profile || null);
-        setProgress(progressData.progress || null);
-        setRoadmap(roadmapData.roadmap || null);
-      } catch (error) {
-        console.error("Dashboard loading error:", error);
-
-        setError(
-          error instanceof Error
-            ? error.message
-            : "Something went wrong while loading your dashboard."
-        );
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadDashboard();
-  }, [router]);
-
-  const userName =
-    profile?.user?.fullName?.trim() ||
-    profile?.user?.email?.split("@")[0] ||
-    "Learner";
-
-  const userLevel = formatLevel(
-    profile?.user?.level || profile?.learnerProfile?.skillLevel
-  );
-
-  const problemsSolved = progress?.problemsSolved ?? 0;
-  const totalSubmissions = progress?.totalSubmissions ?? 0;
-  const accuracy = progress?.accuracy ?? 0;
-
-  const roadmapTopics = roadmap?.topics || [];
-  const completedTopics = roadmap?.completedTopics || [];
-
-  const roadmapProgress =
-    roadmapTopics.length > 0
-      ? Math.round((completedTopics.length / roadmapTopics.length) * 100)
-      : 0;
-
-  const currentTopic =
-    roadmap?.currentTopic ||
-    roadmapTopics.find(
-      (topic) =>
-        topic.status === "in_progress" || topic.status === "current"
-    )?.topic ||
-    roadmapTopics[0]?.topic ||
-    "Start your learning path";
-
-  const skillSnapshot = useMemo(() => {
-    const topicProgress = progress?.topicProgress || [];
-
-    if (topicProgress.length > 0) {
-      return topicProgress.slice(0, 4).map((item) => ({
-        name: item.topic,
-        score: Math.max(0, Math.min(100, item.accuracy)),
-        label:
-          item.solved > 0
-            ? `${item.solved} solved`
-            : item.attempted > 0
-              ? "Needs practice"
-              : "Not started",
-      }));
-    }
-
-    const strengths = profile?.learnerProfile?.strengths || [];
-    const weaknesses = profile?.learnerProfile?.weaknesses || [];
-
-    const fallbackTopics = [
-      ...strengths.map((topic) => ({
-        name: topic,
-        score: 100,
-        label: "Strength",
-      })),
-      ...weaknesses.map((topic) => ({
-        name: topic,
-        score: 35,
-        label: "Focus Area",
-      })),
-    ];
-
-    return fallbackTopics.slice(0, 4);
-  }, [progress, profile]);
-
-  const visibleRoadmap = roadmapTopics.slice(0, 3);
-
-  if (loading) {
-    return (
-      <main className="min-h-screen bg-[#F8F7FC] text-[#17172B]">
-        <div className="flex min-h-screen">
-          <AppSidebar />
-
-          <div className="min-w-0 flex-1">
-            <DashboardHeader />
-
-            <div className="flex min-h-[80vh] items-center justify-center">
-              <div className="text-sm font-semibold text-slate-400">
-                Loading your personalized dashboard...
-              </div>
-            </div>
-          </div>
-        </div>
-      </main>
-    );
-  }
-
-  if (error) {
-    return (
-      <main className="min-h-screen bg-[#F8F7FC] text-[#17172B]">
-        <div className="flex min-h-screen">
-          <AppSidebar />
-
-          <div className="min-w-0 flex-1">
-            <DashboardHeader />
-
-            <div className="mx-auto flex min-h-[80vh] max-w-2xl items-center justify-center px-6">
-              <div className="w-full rounded-[26px] border border-red-100 bg-white p-8 text-center shadow-sm">
-                <h1 className="text-xl font-bold">
-                  Could not load your dashboard
-                </h1>
-
-                <p className="mt-3 text-sm leading-6 text-slate-500">
-                  {error}
-                </p>
-
-                <button
-                  type="button"
-                  onClick={() => window.location.reload()}
-                  className="mt-6 rounded-xl bg-[#6C5CE7] px-5 py-3 text-sm font-bold text-white"
-                >
-                  Try Again
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </main>
-    );
-  }
 
   return (
     <main className="min-h-screen bg-[#F8F7FC] text-[#17172B]">
@@ -297,12 +44,12 @@ export default function DashboardPage() {
                   </p>
 
                   <h1 className="mt-2 text-3xl font-bold tracking-[-0.04em] sm:text-4xl">
-                    Welcome, {userName}
+                    Ready to keep improving?
                   </h1>
 
                   <p className="mt-3 max-w-xl text-sm leading-6 text-slate-500">
-                    Your dashboard is personalized from your profile, progress,
-                    and learning roadmap.
+                    Your next lesson is based on your diagnostic result and
+                    current learning progress.
                   </p>
                 </div>
 
@@ -327,7 +74,7 @@ export default function DashboardPage() {
                       </span>
 
                       <span className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold text-white/60">
-                        Personalized for you
+                        Recommended for you
                       </span>
                     </div>
 
@@ -336,29 +83,23 @@ export default function DashboardPage() {
                     </p>
 
                     <h2 className="mt-2 text-3xl font-bold">
-                      {currentTopic}
+                      Array Fundamentals
                     </h2>
 
                     <p className="mt-3 max-w-xl text-sm leading-6 text-white/65">
-                      Continue from your current roadmap topic and build your
-                      skills based on your actual learning progress.
+                      Build confidence with array indexing, element access, and
+                      understanding how values are stored before moving into
+                      traversal.
                     </p>
 
                     <div className="mt-7 max-w-lg">
                       <div className="flex justify-between text-xs">
-                        <span className="text-white/45">
-                          Roadmap progress
-                        </span>
-                        <span className="font-bold text-[#8EDBD5]">
-                          {roadmapProgress}%
-                        </span>
+                        <span className="text-white/45">Concept progress</span>
+                        <span className="font-bold text-[#8EDBD5]">35%</span>
                       </div>
 
                       <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
-                        <div
-                          className="h-full rounded-full bg-[#8EDBD5]"
-                          style={{ width: `${roadmapProgress}%` }}
-                        />
+                        <div className="h-full w-[35%] rounded-full bg-[#8EDBD5]" />
                       </div>
                     </div>
 
@@ -393,7 +134,6 @@ export default function DashboardPage() {
                       <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#6C5CE7]">
                         Learning Companion
                       </p>
-
                       <p className="mt-0.5 text-xs text-slate-400">
                         Personalized guidance
                       </p>
@@ -402,11 +142,9 @@ export default function DashboardPage() {
 
                   <div className="mt-6 rounded-2xl bg-white p-5 shadow-sm">
                     <p className="text-sm leading-6 text-slate-600">
-                      {getCompanionMessage(
-                        profile?.learnerProfile?.strengths || [],
-                        profile?.learnerProfile?.weaknesses || [],
-                        currentTopic
-                      )}
+                      “Your variable skills are strong. Let&apos;s use that
+                      foundation to understand exactly how array indices change
+                      during execution.”
                     </p>
                   </div>
 
@@ -420,10 +158,10 @@ export default function DashboardPage() {
               {/* Stats */}
               <section className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 {[
-                  ["Current Level", userLevel, "From your profile"],
-                  ["Problems Solved", String(problemsSolved), "Your saved progress"],
-                  ["Total Submissions", String(totalSubmissions), "Saved submissions"],
-                  ["Accuracy", `${accuracy}%`, "Based on submissions"],
+                  ["Current Level", "Developing", "Based on diagnostic"],
+                  ["Problems Solved", "12", "4 this week"],
+                  ["Learning Streak", "3 days", "Keep it going"],
+                  ["Path Progress", "18%", "Initial roadmap"],
                 ].map(([label, value, note]) => (
                   <div
                     key={label}
@@ -465,43 +203,29 @@ export default function DashboardPage() {
                   </div>
 
                   <div className="mt-6 space-y-5">
-                    {skillSnapshot.length > 0 ? (
-                      skillSnapshot.map((skill) => (
-                        <div key={skill.name}>
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm font-bold">{skill.name}</p>
-
-                              <p className="mt-0.5 text-[10px] text-slate-400">
-                                {skill.label}
-                              </p>
-                            </div>
-
-                            <p className="text-xs font-bold text-slate-500">
-                              {skill.score}%
+                    {skills.map((skill) => (
+                      <div key={skill.name}>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-bold">{skill.name}</p>
+                            <p className="mt-0.5 text-[10px] text-slate-400">
+                              {skill.label}
                             </p>
                           </div>
 
-                          <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#F0EEF5]">
-                            <div
-                              className="h-full rounded-full bg-[#6C5CE7]"
-                              style={{ width: `${skill.score}%` }}
-                            />
-                          </div>
+                          <p className="text-xs font-bold text-slate-500">
+                            {skill.score}%
+                          </p>
                         </div>
-                      ))
-                    ) : (
-                      <div className="rounded-2xl bg-slate-50 p-5">
-                        <p className="text-sm font-semibold text-slate-600">
-                          Your skill profile is not available yet.
-                        </p>
 
-                        <p className="mt-2 text-xs leading-5 text-slate-400">
-                          Complete your diagnostic or start practicing to build
-                          personalized progress data.
-                        </p>
+                        <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#F0EEF5]">
+                          <div
+                            className="h-full rounded-full bg-[#6C5CE7]"
+                            style={{ width: `${skill.score}%` }}
+                          />
+                        </div>
                       </div>
-                    )}
+                    ))}
                   </div>
                 </div>
 
@@ -528,78 +252,44 @@ export default function DashboardPage() {
                   </div>
 
                   <div className="mt-6 space-y-3">
-                    {visibleRoadmap.length > 0 ? (
-                      visibleRoadmap.map((item, index) => {
-                        const isCurrent =
-                          item.topic === currentTopic ||
-                          item.status === "in_progress" ||
-                          item.status === "current";
+                    {roadmap.map((item, index) => (
+                      <div
+                        key={item.name}
+                        className={`flex items-center gap-4 rounded-2xl border p-4 ${
+                          index === 0
+                            ? "border-[#DCD8FF] bg-[#F8F7FF]"
+                            : "border-slate-100 bg-[#FCFBFE]"
+                        }`}
+                      >
+                        <div
+                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xs font-bold ${
+                            index === 0
+                              ? "bg-[#6C5CE7] text-white"
+                              : "bg-[#ECE9FF] text-[#6C5CE7]"
+                          }`}
+                        >
+                          0{index + 1}
+                        </div>
 
-                        const isCompleted = completedTopics.includes(
-                          item.topic
-                        );
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-bold">
+                            {item.name}
+                          </p>
 
-                        return (
-                          <div
-                            key={`${item.topic}-${index}`}
-                            className={`flex items-center gap-4 rounded-2xl border p-4 ${
-                              isCurrent
-                                ? "border-[#DCD8FF] bg-[#F8F7FF]"
-                                : "border-slate-100 bg-[#FCFBFE]"
-                            }`}
-                          >
-                            <div
-                              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xs font-bold ${
-                                isCurrent
-                                  ? "bg-[#6C5CE7] text-white"
-                                  : "bg-[#ECE9FF] text-[#6C5CE7]"
-                              }`}
-                            >
-                              {String(item.order || index + 1).padStart(2, "0")}
-                            </div>
+                          <p className="mt-1 text-[10px] text-slate-400">
+                            {item.status}
+                          </p>
+                        </div>
 
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm font-bold">
-                                {item.topic}
-                              </p>
-
-                              <p className="mt-1 text-[10px] text-slate-400">
-                                {isCompleted
-                                  ? "Completed"
-                                  : isCurrent
-                                    ? "Current"
-                                    : item.status || "Upcoming"}
-                              </p>
-                            </div>
-
-                            {isCompleted ? (
-                              <span className="rounded-full bg-[#E4F7F5] px-3 py-1 text-[10px] font-bold text-[#317C77]">
-                                Done
-                              </span>
-                            ) : isCurrent ? (
-                              <span className="rounded-full bg-[#ECE9FF] px-3 py-1 text-[10px] font-bold text-[#6C5CE7]">
-                                Current
-                              </span>
-                            ) : (
-                              <span className="text-xs text-slate-300">
-                                →
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <div className="rounded-2xl bg-slate-50 p-5">
-                        <p className="text-sm font-semibold text-slate-600">
-                          Your roadmap is being prepared.
-                        </p>
-
-                        <p className="mt-2 text-xs leading-5 text-slate-400">
-                          Complete your profile or diagnostic to personalize
-                          your learning path.
-                        </p>
+                        {index === 0 ? (
+                          <span className="rounded-full bg-[#E4F7F5] px-3 py-1 text-[10px] font-bold text-[#317C77]">
+                            {item.complete}%
+                          </span>
+                        ) : (
+                          <span className="text-xs text-slate-300">→</span>
+                        )}
                       </div>
-                    )}
+                    ))}
                   </div>
                 </div>
               </section>
@@ -617,12 +307,12 @@ export default function DashboardPage() {
                     </div>
 
                     <h2 className="mt-3 text-xl font-bold">
-                      Practice {currentTopic}.
+                      Practice array indexing before moving forward.
                     </h2>
 
                     <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-                      Your next activity is based on the current topic in your
-                      saved learning roadmap.
+                      Your diagnostic suggests that a short targeted exercise
+                      will strengthen the concept needed for Array Traversal.
                     </p>
                   </div>
 
@@ -641,40 +331,4 @@ export default function DashboardPage() {
       </div>
     </main>
   );
-}
-
-function formatLevel(level?: string) {
-  if (!level) {
-    return "Beginner";
-  }
-
-  return level.charAt(0).toUpperCase() + level.slice(1);
-}
-
-function getCompanionMessage(
-  strengths: string[],
-  weaknesses: string[],
-  currentTopic: string
-) {
-  if (strengths.length > 0 && weaknesses.length > 0) {
-    return `Your strengths include ${strengths
-      .slice(0, 2)
-      .join(" and ")}. Focus next on ${weaknesses
-      .slice(0, 2)
-      .join(" and ")} while continuing with ${currentTopic}.`;
-  }
-
-  if (weaknesses.length > 0) {
-    return `Your current focus areas are ${weaknesses
-      .slice(0, 2)
-      .join(" and ")}. Keep practicing ${currentTopic} to strengthen your learning path.`;
-  }
-
-  if (strengths.length > 0) {
-    return `You are showing strength in ${strengths
-      .slice(0, 2)
-      .join(" and ")}. Use that foundation as you continue with ${currentTopic}.`;
-  }
-
-  return `Your personalized learning path currently starts with ${currentTopic}. Complete more learning activities to build your progress profile.`;
 }
